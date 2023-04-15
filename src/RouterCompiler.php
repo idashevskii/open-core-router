@@ -170,6 +170,9 @@ final class RouterCompiler {
   }
 
   public function scan(string $namespace, string $dir) {
+    if (!is_dir($dir)) {
+      return;
+    }
     $scanDir = function (string $namespace, string $dir)use (&$scanDir) {
       foreach (scandir($dir, SCANDIR_SORT_NONE) as $file) {
         if ($file === '.' || $file === '..') {

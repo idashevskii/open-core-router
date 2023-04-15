@@ -18,6 +18,7 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
+use OpenCore\Exceptions\NoControllersException;
 use Closure;
 
 final class Router extends AbstractMiddeware {
@@ -48,6 +49,9 @@ final class Router extends AbstractMiddeware {
       $compiler = new RouterCompiler();
       $define($compiler);
       $tree = $compiler->compile(); // heavy operation
+      if (!$tree) {
+        throw new NoControllersException();
+      }
       if ($cacheFile) {
         $cache = ['version' => self::CACHE_FORMAT, 'tree' => $tree];
         file_put_contents($cacheFile, '<?php return ' . var_export($cache, true) . ';');
