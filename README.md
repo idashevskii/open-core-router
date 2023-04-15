@@ -1,5 +1,3 @@
-# Strict Router
-
 PSR-15 compliant fast Router Middleware based on precompiled searching tree.
 
 ## Features
