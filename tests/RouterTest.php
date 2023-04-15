@@ -16,7 +16,8 @@ namespace OpenCore;
 use PHPUnit\Framework\TestCase;
 use OpenCore\Exceptions\{
   InconsistentParamsException,
-  AmbiguousRouteException
+  AmbiguousRouteException,
+  NoControllersException,
 };
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -47,8 +48,10 @@ final class RouterTest extends TestCase {
     $logger->debug("Request {0} {1}", [$method, $uri]);
 
     $psrFactory = new Psr17Factory();
+    if(!$scanNs){
+      $scanNs=['Valid'];
+    }
     $router = Router::create(null, $psrFactory, function (RouterCompiler $r)use ($scanNs) {
-          $scanNs[] = 'Valid';
           foreach ($scanNs as $ns) {
             $ns = 'Controllers/' . $ns;
             $r->scan(__NAMESPACE__ . '\\' . strtr($ns, '/', '\\'), __DIR__ . '/' . $ns);
@@ -133,6 +136,11 @@ final class RouterTest extends TestCase {
   public function testAmbiguousDynamicSegments() {
     $this->expectException(AmbiguousRouteException::class);
     $this->handleRequest('DELETE', '/any/request', scanNs: ['AmbiguousDynamic']);
+  }
+
+  public function testNoControllers() {
+    $this->expectException(NoControllersException::class);
+    $this->handleRequest('DELETE', '/any/request', scanNs: ['NotExistingPath']);
   }
 
   public function testRouteParamsNotConsistentMethodParams() {
