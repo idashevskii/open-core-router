@@ -71,15 +71,6 @@ final class Router implements MiddlewareInterface {
     return $ret;
   }
 
-  /**
-   * @param string|null $cacheFile Writable file path. If null, then caching of compiled tree will be disabled
-   * @param Closure $define takes {RouterCompiler} as first argument
-   */
-  public static function create(?string $cacheFile, ResponseFactoryInterface $responseFactory, Closure $define) {
-
-    return new Router($tree, $responseFactory);
-  }
-
   private function resolveUriHandlers(string $uri) {
     $segments = array_values(array_filter(explode('/', $uri), fn($s) => $s !== ''));
     $walk = function (array $node, $segmentIdx, $routeParams)use (&$walk, $segments) {
