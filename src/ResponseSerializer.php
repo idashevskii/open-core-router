@@ -19,24 +19,28 @@ use Psr\Http\Message\{
   ResponseFactoryInterface,
   StreamFactoryInterface
 };
+use Psr\Log\LoggerInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Http\Server\MiddlewareInterface;
 
-class ResponseSerializer extends AbstractMiddeware {
+final class ResponseSerializer implements MiddlewareInterface {
 
   private const JSON_FLAGS = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_INVALID_UTF8_IGNORE;
 
   public function __construct(
+      private LoggerInterface $logger,
       private StreamFactoryInterface $streamFactory,
-      ResponseFactoryInterface $responseFactory,
+      private ResponseFactoryInterface $responseFactory,
   ) {
-    parent::__construct($responseFactory);
+    
   }
 
   public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface {
     $res = $request->getAttribute(Executor::REQUEST_ATTRIBUTE, null);
     /** @var ControllerResponse $res */
     if (!$res) {
-      return $this->errorResponse(500, "No payload from Executor");
+      $this->logger->critical("No payload from Executor");
+      return $this->responseFactory->createResponse(500);
     }
     $response = $this->responseFactory->createResponse($res->getStatus() ?? 200);
     $headers = $res->getHeaders();
@@ -49,7 +53,8 @@ class ResponseSerializer extends AbstractMiddeware {
         $contentType = 'application/json';
         $data = json_encode($data, self::JSON_FLAGS);
       } else {
-        return $this->errorResponse(500, 'Response type {0} not supported', [gettype($data)]);
+        $this->logger->critical('Response type {0} not supported', [gettype($data)]);
+        return $this->responseFactory->createResponse(500);
       }
       if ($contentType) {
         $headers['Content-Type'] = $contentType;

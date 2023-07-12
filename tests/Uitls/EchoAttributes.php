@@ -13,34 +13,20 @@ declare(strict_types=1);
 
 namespace OpenCore\Uitls;
 
-use PHPUnit\Framework\TestCase;
-use OpenCore\Exceptions\{
-  InconsistentParamsException,
-  AmbiguousRouteException
-};
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Psr\Http\Message\RequestFactoryInterface;
-use OpenCore\Uitls\{
-  Logger,
-  ControllerResolver
-};
-use Nyholm\Psr7\Factory\Psr17Factory;
-use Psr\Log\LoggerInterface;
-use Relay\Relay;
-use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use OpenCore\AbstractMiddeware;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
+use Psr\Http\Server\MiddlewareInterface;
 
-final class EchoAttributes extends AbstractMiddeware {
+final class EchoAttributes implements MiddlewareInterface {
 
   public function __construct(
       private StreamFactoryInterface $streamFactory,
-      ResponseFactoryInterface $responseFactory,
+      private ResponseFactoryInterface $responseFactory,
   ) {
-    parent::__construct($responseFactory);
+    
   }
 
   public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface {

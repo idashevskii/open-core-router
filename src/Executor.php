@@ -18,16 +18,17 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Container\ContainerInterface;
+use Psr\Http\Server\MiddlewareInterface;
 
-final class Executor extends AbstractMiddeware {
+final class Executor implements MiddlewareInterface {
 
   public const REQUEST_ATTRIBUTE = '_executorPayload_';
 
   public function __construct(
-      ResponseFactoryInterface $responseFactory,
+      private ResponseFactoryInterface $responseFactory,
       private ContainerInterface $controllerResolver,
   ) {
-    parent::__construct($responseFactory);
+    
   }
 
   public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface {

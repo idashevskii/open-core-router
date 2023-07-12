@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace OpenCore;
 
-use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Message\{
   ServerRequestInterface,
   ResponseInterface
@@ -22,8 +21,18 @@ use Psr\Http\Server\RequestHandlerInterface;
 use OpenCore\ExecutorPayload;
 use OpenCore\ExecutorPayloadParam;
 use Exception;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Log\LoggerInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
 
-class RequestParser extends AbstractMiddeware {
+class RequestParser implements MiddlewareInterface {
+
+  public function __construct(
+      private LoggerInterface $logger,
+      private ResponseFactoryInterface $responseFactory,
+  ) {
+    
+  }
 
   public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface {
     $payload = $request->getAttribute(Router::REQUEST_ATTRIBUTE);
@@ -48,27 +57,32 @@ class RequestParser extends AbstractMiddeware {
           } else if ($value === 'false') {
             $changedValues[$i] = false;
           } else {
-            return $this->errorResponse(400, 'Param #{0} has invalid boolean value', [$i]);
+            $this->logger->debug('Param #{0} has invalid boolean value', [$i]);
+            return $this->responseFactory->createResponse(400);
           }
         } else if ($type === 'float') {
           $changedValues[$i] = (float) $value;
         } else {
-          return $this->errorResponse(501, 'Param #{0} type {1} is not supported', [$i, $type]);
+          $this->logger->critical('Param #{0} type {1} is not supported', [$i, $type]);
+          return $this->responseFactory->createResponse(501);
         }
       } else if ($kind === ExecutorPayloadParam::KIND_BODY) {
         $type = $param->getType();
         $bodyStr = (string) $request->getBody();
         if (!$bodyStr) {
-          return $this->errorResponse(400, 'Body is required', [$i]);
+          $this->logger->debug('Body is required', [$i]);
+          return $this->responseFactory->createResponse(400);
         }
         if ($type === 'array') {
           try {
             $parsedBody = json_decode($bodyStr, flags: JSON_THROW_ON_ERROR | JSON_OBJECT_AS_ARRAY);
           } catch (Exception $ex) {
-            return $this->errorResponse(415, 'Can not parse body', [$type]);
+            $this->logger->debug('Can not parse body', [$type]);
+            return $this->responseFactory->createResponse(415);
           }
         } else {
-          return $this->errorResponse(501, 'Body type {0} is not supported', [$type]);
+          $this->logger->critical('Body type {0} is not supported', [$type]);
+          return $this->responseFactory->createResponse(501);
         }
       }
     }

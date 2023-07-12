@@ -21,16 +21,54 @@ use Psr\Http\Message\ResponseFactoryInterface;
 use OpenCore\Exceptions\NoControllersException;
 use Closure;
 
-final class Router extends AbstractMiddeware {
+final class Router implements MiddlewareInterface {
 
   public const REQUEST_ATTRIBUTE = '_routerPayload_';
   private const CACHE_FORMAT = 1;
+  public const DEFINE = 'routerDefine';
 
-  private function __construct(
-      private array $tree,
-      ResponseFactoryInterface $responseFactory,
+  private ?array $tree;
+  private ?string $cacheFile = null;
+
+  public function __construct(
+      private RouterConfig $config,
+      private ResponseFactoryInterface $responseFactory,
   ) {
-    parent::__construct($responseFactory);
+    $tree = null;
+    if ($config->isCacheEnabled()) {
+      $cacheFile = sys_get_temp_dir() . '/op-router-cache.php';
+      if (file_exists($cacheFile)) {
+        $cache = include $cacheFile;
+        if ($cache['version'] === self::CACHE_FORMAT) {
+          $tree = $cache['tree'];
+        }
+      }
+      if (!$tree) {
+        $tree = $this->makeTree();
+        $cache = ['version' => self::CACHE_FORMAT, 'tree' => $tree];
+        file_put_contents($cacheFile, '<?php return ' . var_export($cache, true) . ';');
+      }
+      $this->cacheFile = $cacheFile;
+    } else {
+      $tree = $this->makeTree();
+    }
+    $this->tree = $tree;
+  }
+
+  public function clearCache() {
+    if ($this->cacheFile && file_exists($this->cacheFile)) {
+      unlink($this->cacheFile);
+    }
+  }
+
+  private function makeTree(): array {
+    $compiler = new RouterCompiler();
+    $this->config->define($compiler);
+    $ret = $compiler->compile(); // heavy operation
+    if (!$ret) {
+      throw new NoControllersException();
+    }
+    return $ret;
   }
 
   /**
@@ -38,25 +76,7 @@ final class Router extends AbstractMiddeware {
    * @param Closure $define takes {RouterCompiler} as first argument
    */
   public static function create(?string $cacheFile, ResponseFactoryInterface $responseFactory, Closure $define) {
-    $tree = null;
-    if ($cacheFile && file_exists($cacheFile)) {
-      $cache = include $cacheFile;
-      if ($cache['version'] === self::CACHE_FORMAT) {
-        $tree = $cache['tree'];
-      }
-    }
-    if (!$tree) {
-      $compiler = new RouterCompiler();
-      $define($compiler);
-      $tree = $compiler->compile(); // heavy operation
-      if (!$tree) {
-        throw new NoControllersException();
-      }
-      if ($cacheFile) {
-        $cache = ['version' => self::CACHE_FORMAT, 'tree' => $tree];
-        file_put_contents($cacheFile, '<?php return ' . var_export($cache, true) . ';');
-      }
-    }
+
     return new Router($tree, $responseFactory);
   }
 
@@ -95,14 +115,14 @@ final class Router extends AbstractMiddeware {
     list($methodHandlers, $segmentParams) = $this->resolveUriHandlers($request->getUri()->getPath());
     $queryParams = $request->getQueryParams();
     if (!$methodHandlers) {
-      return $this->errorResponse(404, 'Route not found');
+      return $this->responseFactory->createResponse(404);
     }
     $httpMethod = $request->getMethod();
     if ($httpMethod === 'HEAD') {
       $httpMethod = 'GET';
     }
     if (!isset($methodHandlers[$httpMethod])) {
-      return $this->errorResponse(405, 'HTTP Method not found for route');
+      return $this->responseFactory->createResponse(405);
     }
     list($controllerClass, $controllerMethod, $paramsProps, $attrs) = $methodHandlers[$httpMethod];
     $params = [];

@@ -19,6 +19,7 @@
   "require-dev": {
     "phpunit/phpunit": "^9.1",
     "nyholm/psr7": "^1.5",
+    "open-core/injector": "^1.1",
     "relay/relay": "~2.0"
   },
   "require": {
