@@ -3,6 +3,9 @@
   "description": "PSR-15 compliant fast Router Middleware based on precompiled searching tree",
   "type": "library",
   "license": "MIT",
+  "scripts": {
+    "test": "phpunit ./tests"
+  },
   "autoload": {
     "psr-4": {
       "OpenCore\\": "src/"
