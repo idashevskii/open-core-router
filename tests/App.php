@@ -14,22 +14,20 @@ declare(strict_types=1);
 namespace OpenCore;
 
 use Psr\Http\Message\ResponseInterface;
-use OpenCore\Uitls\Logger;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Relay\Relay;
-use OpenCore\Uitls\EchoAttributes;
+use OpenCore\Uitls\EchoAttributesMiddleware;
 use OpenCore\Injector;
-use Psr\Log\LoggerInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Container\ContainerInterface;
+use OpenCore\Uitls\ErrorHandlerMiddleware;
 
 final class App {
 
   public static function create(array $scanNs, bool $useCache = false): App {
     $injector = Injector::create();
-    $injector->set(LoggerInterface::class, new Logger());
     $injector->set(ContainerInterface::class, $injector);
     $psrFactory = new Psr17Factory();
     $injector->set(StreamFactoryInterface::class, $psrFactory);
@@ -58,14 +56,14 @@ final class App {
   }
 
   public function __construct(
-      private LoggerInterface $logger,
       private ResponseSerializer $responseSerializer,
       private RequestParser $requestParser,
       private Executor $executor,
       private Router $router,
-      private EchoAttributes $echoAttributes,
+      private EchoAttributesMiddleware $echoAttributes,
       private StreamFactoryInterface $streamFactory,
       private ServerRequestFactoryInterface $serverRequestFactory,
+      private ErrorHandlerMiddleware $errorHandlerMiddleware,
   ) {
     
   }
@@ -77,7 +75,6 @@ final class App {
   public function handleRequest(string $method, string $uri,
       ?array $query = null, ?array $payload = null, ?string $payloadStr = null,
       bool $routerOnly = false): ResponseInterface {
-    $this->logger->debug("Request {0} {1}", [$method, $uri]);
 
     $request = $this->serverRequestFactory->createServerRequest($method, $uri);
     if ($payload !== null) {
@@ -90,11 +87,13 @@ final class App {
     }
     if ($routerOnly) {
       $queue = [
+        $this->errorHandlerMiddleware,
         $this->router,
         $this->echoAttributes,
       ];
     } else {
       $queue = [
+        $this->errorHandlerMiddleware,
         $this->router,
         $this->requestParser,
         $this->executor,

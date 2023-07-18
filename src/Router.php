@@ -17,9 +17,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ResponseFactoryInterface;
 use OpenCore\Exceptions\NoControllersException;
-use Closure;
+use OpenCore\Exceptions\RoutingException;
 
 final class Router implements MiddlewareInterface {
 
@@ -32,7 +31,6 @@ final class Router implements MiddlewareInterface {
 
   public function __construct(
       private RouterConfig $config,
-      private ResponseFactoryInterface $responseFactory,
   ) {
     $tree = null;
     if ($config->isCacheEnabled()) {
@@ -106,14 +104,14 @@ final class Router implements MiddlewareInterface {
     list($methodHandlers, $segmentParams) = $this->resolveUriHandlers($request->getUri()->getPath());
     $queryParams = $request->getQueryParams();
     if (!$methodHandlers) {
-      return $this->responseFactory->createResponse(404);
+      throw new RoutingException(code: 404);
     }
     $httpMethod = $request->getMethod();
     if ($httpMethod === 'HEAD') {
       $httpMethod = 'GET';
     }
     if (!isset($methodHandlers[$httpMethod])) {
-      return $this->responseFactory->createResponse(405);
+      throw new RoutingException(code: 405);
     }
     list($controllerClass, $controllerMethod, $paramsProps, $attrs) = $methodHandlers[$httpMethod];
     $params = [];

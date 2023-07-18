@@ -22,17 +22,10 @@ use OpenCore\ExecutorPayload;
 use OpenCore\ExecutorPayloadParam;
 use Exception;
 use Psr\Http\Server\MiddlewareInterface;
-use Psr\Log\LoggerInterface;
-use Psr\Http\Message\ResponseFactoryInterface;
+use ErrorException;
+use OpenCore\Exceptions\RoutingException;
 
 class RequestParser implements MiddlewareInterface {
-
-  public function __construct(
-      private LoggerInterface $logger,
-      private ResponseFactoryInterface $responseFactory,
-  ) {
-    
-  }
 
   public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface {
     $payload = $request->getAttribute(Router::REQUEST_ATTRIBUTE);
@@ -57,32 +50,27 @@ class RequestParser implements MiddlewareInterface {
           } else if ($value === 'false') {
             $changedValues[$i] = false;
           } else {
-            $this->logger->debug('Param #{0} has invalid boolean value', [$i]);
-            return $this->responseFactory->createResponse(400);
+            throw new RoutingException("Param #$i has invalid boolean value", code: 400);
           }
         } else if ($type === 'float') {
           $changedValues[$i] = (float) $value;
         } else {
-          $this->logger->critical('Param #{0} type {1} is not supported', [$i, $type]);
-          return $this->responseFactory->createResponse(501);
+          throw new ErrorException('Invalid param type'); // should be checked in compile step
         }
       } else if ($kind === ExecutorPayloadParam::KIND_BODY) {
         $type = $param->getType();
         $bodyStr = (string) $request->getBody();
         if (!$bodyStr) {
-          $this->logger->debug('Body is required', [$i]);
-          return $this->responseFactory->createResponse(400);
+          throw new RoutingException('Body not provided', code: 400);
         }
         if ($type === 'array') {
           try {
             $parsedBody = json_decode($bodyStr, flags: JSON_THROW_ON_ERROR | JSON_OBJECT_AS_ARRAY);
           } catch (Exception $ex) {
-            $this->logger->debug('Can not parse body', [$type]);
-            return $this->responseFactory->createResponse(415);
+            throw new RoutingException('Body parse error', code: 400, previous: $ex);
           }
         } else {
-          $this->logger->critical('Body type {0} is not supported', [$type]);
-          return $this->responseFactory->createResponse(501);
+          throw new ErrorException('Invalid body type'); // should be prevented in compile step
         }
       }
     }

@@ -19,10 +19,9 @@ use ReflectionMethod;
 use ReflectionParameter;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use OpenCore\Exceptions\{
-  InconsistentParamsException,
-  AmbiguousRouteException
-};
+use OpenCore\Exceptions\InvalidParamTypeException;
+use OpenCore\Exceptions\InconsistentParamsException;
+use OpenCore\Exceptions\AmbiguousRouteException;
 
 final class RouterCompiler {
 
@@ -72,21 +71,29 @@ final class RouterCompiler {
 
   private function parseParams(array $segnemtParamIndexMap, ReflectionMethod $rMethod, array $handler, string $uri): array {
     $ret = [];
-    foreach ($rMethod->getParameters() as $rParam) {
+    foreach ($rMethod->getParameters() as $i => $rParam) {
       /* @var $rParam ReflectionParameter */
+      $paramName = $rParam->name;
       $paramType = ltrim((string) $rParam->getType(), '?'); // strip optionality marker;
+      $supportedParamTypes = null;
       if ($rParam->getAttributes(Body::class, ReflectionAttribute::IS_INSTANCEOF)) {
         $paramKind = ExecutorPayloadParam::KIND_BODY;
+        $supportedParamTypes = ['array'];
       } else if (is_a($paramType, ServerRequestInterface::class, true)) {
         $paramKind = ExecutorPayloadParam::KIND_REQUEST;
       } else if (is_a($paramType, ResponseInterface::class, true)) {
         $paramKind = ExecutorPayloadParam::KIND_RESPONSE;
       } else if ($rParam->isOptional()) {
         $paramKind = ExecutorPayloadParam::KIND_QUERY;
+        $supportedParamTypes = ['string', 'int', 'bool', 'float'];
       } else {
         $paramKind = ExecutorPayloadParam::KIND_SEGMENT;
+        $supportedParamTypes = ['string', 'int'];
       }
-      $paramName = $rParam->name;
+      if ($supportedParamTypes && !in_array($paramType, $supportedParamTypes)) {
+        throw new InvalidParamTypeException(
+                "Type '$paramType' of param '$paramName' for " . self::stringifyCallable($handler) . " in route '$uri' is not supported");
+      }
       if ($paramKind === ExecutorPayloadParam::KIND_SEGMENT) {
         if (isset($segnemtParamIndexMap[$paramName])) {
           $key = $segnemtParamIndexMap[$paramName];

@@ -18,16 +18,9 @@ use OpenCore\Exceptions\{
   InconsistentParamsException,
   AmbiguousRouteException,
   NoControllersException,
+  InvalidParamTypeException,
 };
 use Psr\Http\Message\ResponseInterface;
-use OpenCore\Uitls\{
-  Logger,
-  ControllerResolver
-};
-use Nyholm\Psr7\Factory\Psr17Factory;
-use Relay\Relay;
-use Psr\Container\ContainerInterface;
-use OpenCore\Uitls\EchoAttributes;
 
 final class RouterTest extends TestCase {
 
@@ -180,24 +173,17 @@ final class RouterTest extends TestCase {
 
   public function testInvalidBody() {
     $response = self::$app->handleRequest('POST', '/user', payloadStr: '{');
-    $this->assertEquals(415, $response->getStatusCode());
+    $this->assertEquals(400, $response->getStatusCode());
   }
 
-  public function testHttpMethodNotSupported() {
-    $response = self::$app->handleRequest('GET', '/types/array/-');
-    $this->assertEquals(501, $response->getStatusCode());
+  public function testInvalidParamType() {
+    $this->expectException(InvalidParamTypeException::class);
+    $this->makeApp(['InvalidParamType'])->handleRequest('GET', '/');
+  }
 
-    $response = self::$app->handleRequest('GET', '/types/object/-');
-    $this->assertEquals(501, $response->getStatusCode());
-
-    $response = self::$app->handleRequest('GET', '/types/mixed/-');
-    $this->assertEquals(501, $response->getStatusCode());
-
-    $response = self::$app->handleRequest('POST', '/types/body-object', payload: []);
-    $this->assertEquals(501, $response->getStatusCode());
-
-    $response = self::$app->handleRequest('POST', '/types/body-string', payload: []);
-    $this->assertEquals(501, $response->getStatusCode());
+  public function testInvalidBodyType() {
+    $this->expectException(InvalidParamTypeException::class);
+    $this->makeApp(['InvalidBodyType'])->handleRequest('POST', '/', payload: []);
   }
 
   public function testRequestAttributes() {
