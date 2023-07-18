@@ -139,9 +139,10 @@ final class RouterCompiler {
     if (!$rCtrlAttrs) {
       return;
     }
-    /* @var $ctrlAttr Controller */
-    $ctrlAttr = $rCtrlAttrs[0]->newInstance();
-    $prefix = $ctrlAttr->prefix ?? '';
+    /* @var $rCtrlAttr Controller */
+    $rCtrlAttr = $rCtrlAttrs[0]->newInstance();
+    $prefix = $rCtrlAttr->prefix ?? '';
+    $commonAttrs = $this->parseAttributes($rClass);
     foreach ($rClass->getMethods(ReflectionMethod::IS_PUBLIC) as $rMethod) {
       /* @var $rMethod ReflectionMethod */
       $rRouteAttrs = $rMethod->getAttributes(Route::class);
@@ -154,19 +155,14 @@ final class RouterCompiler {
       list($segments, $segnemtParamIndexMap) = $this->parsePath($path);
       $handler = [$class, $rMethod->getName()];
       $params = $this->parseParams($segnemtParamIndexMap, $rMethod, $handler, $path);
-      $routeAttrs = $this->parseAttributes($rMethod, $route->attributes);
+      $routeAttrs = array_merge($commonAttrs, $this->parseAttributes($rMethod), $route->attributes ?? []);
       $this->insertHandlerToTree($route->method, $segments, [...$handler, $params, $routeAttrs]);
     }
   }
 
-  private function parseAttributes(ReflectionMethod $rMethod, ?array $directAttrs) {
+  private function parseAttributes(ReflectionMethod|ReflectionClass $rMethod) {
     $rRouteAttrs = $rMethod->getAttributes(RouteAnnotation::class, ReflectionAttribute::IS_INSTANCEOF);
-    $ret = $directAttrs ?? [];
-    foreach ($rRouteAttrs as $rAttr) {
-      /* @var $rAttr ReflectionAttribute */
-      $ret += $rAttr->newInstance()->getAttributes();
-    }
-    return $ret;
+    return array_merge(...array_map(fn($rAttr) => $rAttr->newInstance()->getAttributes(), $rRouteAttrs));
   }
 
   public function scan(string $namespace, string $dir) {

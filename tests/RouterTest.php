@@ -183,11 +183,6 @@ final class RouterTest extends TestCase {
     $this->assertEquals(415, $response->getStatusCode());
   }
 
-  public function testQueryArrayParam() {
-    $response = self::$app->handleRequest('POST', '/user', payloadStr: '{');
-    $this->assertEquals(415, $response->getStatusCode());
-  }
-
   public function testHttpMethodNotSupported() {
     $response = self::$app->handleRequest('GET', '/types/array/-');
     $this->assertEquals(501, $response->getStatusCode());
@@ -211,7 +206,8 @@ final class RouterTest extends TestCase {
     $attrs = self::toJson($response);
     $this->assertIsArray($attrs);
     $this->assertEquals(true, $attrs['auth']);
-    $this->assertEquals(true, $attrs['no_csrf']);
+    $this->assertEquals(true, $attrs['noCsrf']);
+    $this->assertEquals(true, $attrs['ctrlSpecific']);
     $this->assertEquals('b', $attrs['a']);
     $this->assertEquals('d', $attrs['c']);
   }

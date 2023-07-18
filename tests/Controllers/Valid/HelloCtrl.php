@@ -15,13 +15,13 @@ namespace OpenCore\Controllers\Valid;
 
 use OpenCore\Controller;
 use OpenCore\Route;
-use OpenCore\RouteAnnotations\{
-  Auth,
-  NoCsrf
-};
+use OpenCore\RouteAnnotations\Auth;
+use OpenCore\RouteAnnotations\CtrlCommon;
+use OpenCore\RouteAnnotations\NoCsrf;
 use OpenCore\Body;
 
 #[Controller('/hello')]
+#[CtrlCommon()]
 class HelloCtrl {
 
   public function __construct() {
