@@ -56,8 +56,8 @@ final class App {
   }
 
   public function __construct(
-      private Executor $executor,
-      private Router $router,
+      private RequestHandler $requestHandler,
+      private RouterMiddleware $routerMiddleware,
       private EchoAttributesMiddleware $echoAttributes,
       private StreamFactoryInterface $streamFactory,
       private ServerRequestFactoryInterface $serverRequestFactory,
@@ -67,7 +67,7 @@ final class App {
   }
 
   public function clear() {
-    $this->router->clearCache();
+    $this->routerMiddleware->clearCache();
   }
 
   public function handleRequest(string $method, string $uri,
@@ -86,14 +86,14 @@ final class App {
     if ($routerOnly) {
       $queue = [
         $this->errorHandlerMiddleware,
-        $this->router,
+        $this->routerMiddleware,
         $this->echoAttributes,
       ];
     } else {
       $queue = [
         $this->errorHandlerMiddleware,
-        $this->router,
-        $this->executor,
+        $this->routerMiddleware,
+        $this->requestHandler,
       ];
     }
     $relay = new Relay($queue);

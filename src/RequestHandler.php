@@ -22,7 +22,7 @@ use Psr\Container\ContainerInterface;
 use OpenCore\Exceptions\RoutingException;
 use \JsonException;
 
-final class Executor implements RequestHandlerInterface {
+final class RequestHandler implements RequestHandlerInterface {
 
   public const REQUEST_ATTRIBUTE = '_executorPayload_';
 
@@ -35,13 +35,13 @@ final class Executor implements RequestHandlerInterface {
   }
 
   public function handle(ServerRequestInterface $request): ResponseInterface {
-    $payload = $request->getAttribute(Router::REQUEST_ATTRIBUTE);
+    $payload = $request->getAttribute(RouterMiddleware::REQUEST_ATTRIBUTE);
     /* @var $payload ExecutorPayload */
     $paramRawValues = $payload->getParamRawValues();
     $paramTypes = $payload->getParamTypes();
     $callMethodParams = [];
     foreach ($payload->getParamKinds() as $i => $kind) {
-      if ($kind === Router::KIND_SEGMENT || $kind === Router::KIND_QUERY) {
+      if ($kind === RouterMiddleware::KIND_SEGMENT || $kind === RouterMiddleware::KIND_QUERY) {
         $rawValue = $paramRawValues[$i];
         if ($rawValue === null) {
           $value = null; // optional param not specified, nothing to convert
@@ -58,7 +58,7 @@ final class Executor implements RequestHandlerInterface {
             default => throw new ErrorException('Invalid param type'), // should be checked in compile step
           };
         }
-      } else if ($kind === Router::KIND_BODY) {
+      } else if ($kind === RouterMiddleware::KIND_BODY) {
         $rawValue = (string) $request->getBody();
         if (!$rawValue) {
           throw new RoutingException('Body not provided', code: 400);
@@ -68,9 +68,9 @@ final class Executor implements RequestHandlerInterface {
           'array' => self::parseJsonBody($rawValue),
           default => throw new ErrorException('Invalid body type'), // should be prevented in compile step
         };
-      } else if ($kind === Router::KIND_REQUEST) {
+      } else if ($kind === RouterMiddleware::KIND_REQUEST) {
         $value = $request;
-      } else if ($kind === Router::KIND_RESPONSE) {
+      } else if ($kind === RouterMiddleware::KIND_RESPONSE) {
         $value = $this->responseFactory->createResponse();
       } else {
         throw new ErrorException("Unknown param kind '$kind'");

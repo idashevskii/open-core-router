@@ -20,9 +20,9 @@ use Psr\Http\Message\ResponseInterface;
 use OpenCore\Exceptions\NoControllersException;
 use OpenCore\Exceptions\RoutingException;
 
-final class Router implements MiddlewareInterface {
+final class RouterMiddleware implements MiddlewareInterface {
 
-  public const REQUEST_ATTRIBUTE = '_routerPayload_';
+  public const REQUEST_ATTRIBUTE = '$$router';
   private const CACHE_FORMAT = 2;
 
   public const KIND_SEGMENT = 1;
@@ -116,9 +116,9 @@ final class Router implements MiddlewareInterface {
     $paramTypes = [];
     $rawParamValues = [];
     foreach ($paramsProps as list($paramKind, $routeKey, $paramType)) {
-      if ($paramKind === Router::KIND_SEGMENT) {
+      if ($paramKind === RouterMiddleware::KIND_SEGMENT) {
         $paramValue = $segmentParams[$routeKey]; // must exist
-      } else if ($paramKind === Router::KIND_QUERY) {
+      } else if ($paramKind === RouterMiddleware::KIND_QUERY) {
         $paramValue = isset($queryParams[$routeKey]) ? (string) $queryParams[$routeKey] : null;
       } else {
         $paramValue = null;

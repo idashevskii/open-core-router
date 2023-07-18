@@ -78,32 +78,32 @@ final class RouterCompiler {
       $paramType = ltrim((string) $rParam->getType(), '?'); // strip optionality marker;
       $supportedParamTypes = null;
       if ($rParam->getAttributes(Body::class, ReflectionAttribute::IS_INSTANCEOF)) {
-        $paramKind = Router::KIND_BODY;
+        $paramKind = RouterMiddleware::KIND_BODY;
         $supportedParamTypes = ['array', 'string'];
       } else if (is_a($paramType, ServerRequestInterface::class, true)) {
-        $paramKind = Router::KIND_REQUEST;
+        $paramKind = RouterMiddleware::KIND_REQUEST;
         $paramType = null;
       } else if (is_a($paramType, ResponseInterface::class, true)) {
-        $paramKind = Router::KIND_RESPONSE;
+        $paramKind = RouterMiddleware::KIND_RESPONSE;
         $paramType = null;
       } else if ($rParam->isOptional()) {
-        $paramKind = Router::KIND_QUERY;
+        $paramKind = RouterMiddleware::KIND_QUERY;
         $supportedParamTypes = ['string', 'int', 'bool', 'float'];
       } else {
-        $paramKind = Router::KIND_SEGMENT;
+        $paramKind = RouterMiddleware::KIND_SEGMENT;
         $supportedParamTypes = ['string', 'int'];
       }
       if ($supportedParamTypes && !in_array($paramType, $supportedParamTypes)) {
         throw new InvalidParamTypeException(
                 "Type '$paramType' of param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' is not supported");
       }
-      if ($paramKind === Router::KIND_SEGMENT) {
+      if ($paramKind === RouterMiddleware::KIND_SEGMENT) {
         if (!isset($segnemtParamIndexMap[$paramName])) {
           throw new InconsistentParamsException(
                   "Route segment for param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' not found");
         }
         $key = $segnemtParamIndexMap[$paramName];
-      } else if ($paramKind === Router::KIND_QUERY) {
+      } else if ($paramKind === RouterMiddleware::KIND_QUERY) {
         $key = $paramName;
       } else {
         $key = null;
