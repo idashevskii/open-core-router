@@ -36,7 +36,7 @@ final class RequestHandler implements RequestHandlerInterface {
 
   public function handle(ServerRequestInterface $request): ResponseInterface {
     $payload = $request->getAttribute(RouterMiddleware::REQUEST_ATTRIBUTE);
-    /* @var $payload ExecutorPayload */
+    /* @var $payload RouterOutput */
     $paramRawValues = $payload->getParamRawValues();
     $paramTypes = $payload->getParamTypes();
     $callMethodParams = [];

@@ -127,7 +127,7 @@ final class RouterMiddleware implements MiddlewareInterface {
       $paramTypes[] = $paramType;
       $rawParamValues[] = $paramValue;
     }
-    $attrs[self::REQUEST_ATTRIBUTE] = new ExecutorPayload(
+    $attrs[self::REQUEST_ATTRIBUTE] = new RouterOutput(
         $this->classes[$classIndex], $controllerMethod, $paramKinds, $paramTypes, $rawParamValues);
     foreach ($attrs as $key => $value) {
       $request = $request->withAttribute($key, $value);

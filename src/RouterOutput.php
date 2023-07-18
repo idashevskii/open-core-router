@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace OpenCore;
 
-final class ExecutorPayload {
+final class RouterOutput {
 
   public function __construct(
       private readonly string $controllerClass,
