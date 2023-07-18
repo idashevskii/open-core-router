@@ -21,9 +21,8 @@ use OpenCore\ControllerResponse;
 #[Controller('/crud4')]
 class Crud4 {
 
-
   #[Route('GET', '')]
-  public function getAll(?string $filter1=null, ?string $filter2=null, ?string $filter3=null, ?string $sort=null) {
+  public function getAll(?string $filter1 = null, ?string $filter2 = null, ?string $filter3 = null, ?string $sort = null) {
     return [];
   }
 
@@ -44,14 +43,16 @@ class Crud4 {
 
   #[Route('DELETE', '{id}')]
   public function delete(int $id) {
+    
   }
 
   #[Route('PATCH', '{id}')]
   public function patch(int $id, #[Body] array $data) {
+    
   }
 
   #[Route('GET', 'sub1/')]
-  public function getAllSub1(?string $filter1=null, ?string $filter2=null, ?string $filter3=null, ?string $sort=null) {
+  public function getAllSub1(?string $filter1 = null, ?string $filter2 = null, ?string $filter3 = null, ?string $sort = null) {
     return [];
   }
 
@@ -72,14 +73,16 @@ class Crud4 {
 
   #[Route('DELETE', 'sub1/{id}')]
   public function deleteSub1(int $id) {
+    
   }
 
   #[Route('PATCH', 'sub1/{id}')]
   public function patchSub1(int $id, #[Body] array $data) {
+    
   }
 
   #[Route('GET', 'sub2/')]
-  public function getAllSub2(?string $filter1=null, ?string $filter2=null, ?string $filter3=null, ?string $sort=null) {
+  public function getAllSub2(?string $filter1 = null, ?string $filter2 = null, ?string $filter3 = null, ?string $sort = null) {
     return [];
   }
 
@@ -100,14 +103,16 @@ class Crud4 {
 
   #[Route('DELETE', 'sub2/{id}')]
   public function deleteSub2(int $id) {
+    
   }
 
   #[Route('PATCH', 'sub2/{id}')]
   public function patchSub2(int $id, #[Body] array $data) {
+    
   }
 
   #[Route('GET', 'sub3/')]
-  public function getAllSub3(?string $filter1=null, ?string $filter2=null, ?string $filter3=null, ?string $sort=null) {
+  public function getAllSub3(?string $filter1 = null, ?string $filter2 = null, ?string $filter3 = null, ?string $sort = null) {
     return [];
   }
 
@@ -128,13 +133,14 @@ class Crud4 {
 
   #[Route('DELETE', 'sub3/{id}')]
   public function deleteSub3(int $id) {
+    
   }
 
   #[Route('PATCH', 'sub3/{id}')]
   public function patchSub3(int $id, #[Body] array $data) {
+    
   }
-  
-  
+
   #[Route('POST', 'sub4/')]
   public function addSub4(#[Body] array $data) {
     return [];
@@ -152,13 +158,14 @@ class Crud4 {
 
   #[Route('DELETE', 'sub4/{id}')]
   public function deleteSub4(int $id) {
+    
   }
 
   #[Route('PATCH', 'sub4/{id}')]
   public function patchSub4(int $id, #[Body] array $data) {
+    
   }
-  
-  
+
   #[Route('POST', 'sub5/')]
   public function addSub5(#[Body] array $data) {
     return [];
@@ -176,14 +183,14 @@ class Crud4 {
 
   #[Route('DELETE', 'sub5/{id}')]
   public function deleteSub5(int $id) {
+    
   }
 
   #[Route('PATCH', 'sub5/{id}')]
   public function patchSub5(int $id, #[Body] array $data) {
+    
   }
-  
-  
-  
+
   #[Route('POST', 'sub6/')]
   public function addSub6(#[Body] array $data) {
     return [];
@@ -201,13 +208,14 @@ class Crud4 {
 
   #[Route('DELETE', 'sub6/{id}')]
   public function deleteSub6(int $id) {
+    
   }
 
   #[Route('PATCH', 'sub6/{id}')]
   public function patchSub6(int $id, #[Body] array $data) {
+    
   }
-  
-  
+
   #[Route('POST', 'sub7/')]
   public function addSub7(#[Body] array $data) {
     return [];
@@ -225,13 +233,14 @@ class Crud4 {
 
   #[Route('DELETE', 'sub7/{id}')]
   public function deleteSub7(int $id) {
+    
   }
 
   #[Route('PATCH', 'sub7/{id}')]
   public function patchSub7(int $id, #[Body] array $data) {
+    
   }
-  
-  
+
   #[Route('POST', 'sub8/')]
   public function addSub8(#[Body] array $data) {
     return [];
@@ -249,9 +258,12 @@ class Crud4 {
 
   #[Route('DELETE', 'sub8/{id}')]
   public function deleteSub8(int $id) {
+    
   }
 
   #[Route('PATCH', 'sub8/{id}')]
   public function patchSub8(int $id, #[Body] array $data) {
+    
   }
+
 }
