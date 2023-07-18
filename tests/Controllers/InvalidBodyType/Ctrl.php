@@ -21,7 +21,7 @@ use OpenCore\Body;
 class Ctrl {
 
   #[Route('POST', '')]
-  public function bodyString(#[Body] string $arr) {
+  public function send(#[Body] float $arr) {
     return null;
   }
 

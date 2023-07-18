@@ -17,48 +17,109 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
+use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Container\ContainerInterface;
-use Psr\Http\Server\MiddlewareInterface;
+use OpenCore\Exceptions\RoutingException;
+use \JsonException;
 
-final class Executor implements MiddlewareInterface {
+final class Executor implements RequestHandlerInterface {
 
   public const REQUEST_ATTRIBUTE = '_executorPayload_';
 
   public function __construct(
+      private StreamFactoryInterface $streamFactory,
       private ResponseFactoryInterface $responseFactory,
       private ContainerInterface $controllerResolver,
   ) {
     
   }
 
-  public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface {
+  public function handle(ServerRequestInterface $request): ResponseInterface {
     $payload = $request->getAttribute(Router::REQUEST_ATTRIBUTE);
     /* @var $payload ExecutorPayload */
-    $methodParams = [];
-    foreach ($payload->getParams() as $param) {
-      $methodParams[] = match ($param->getKind()) {
-        ExecutorPayloadParam::KIND_BODY => $request->getParsedBody(),
-        ExecutorPayloadParam::KIND_REQUEST => $request,
-        ExecutorPayloadParam::KIND_RESPONSE => $this->responseFactory->createResponse(),
-        ExecutorPayloadParam::KIND_SEGMENT,
-        ExecutorPayloadParam::KIND_QUERY => $param->getValue(),
-      };
+    $paramRawValues = $payload->getParamRawValues();
+    $paramTypes = $payload->getParamTypes();
+    $callMethodParams = [];
+    foreach ($payload->getParamKinds() as $i => $kind) {
+      if ($kind === Router::KIND_SEGMENT || $kind === Router::KIND_QUERY) {
+        $rawValue = $paramRawValues[$i];
+        if ($rawValue === null) {
+          $value = null; // optional param not specified, nothing to convert
+        } else {
+          $value = match ($paramTypes[$i]) {
+            'string' => $rawValue,
+            'int' => (int) $rawValue,
+            'float' => (float) $rawValue,
+            'bool' => match ($rawValue) {
+              'true', '1' => true,
+              'false', '0' => false,
+              default => throw new RoutingException("Param #$i has invalid boolean value", code: 400),
+            },
+            default => throw new ErrorException('Invalid param type'), // should be checked in compile step
+          };
+        }
+      } else if ($kind === Router::KIND_BODY) {
+        $rawValue = (string) $request->getBody();
+        if (!$rawValue) {
+          throw new RoutingException('Body not provided', code: 400);
+        }
+        $value = match ($paramTypes[$i]) {
+          'string' => $rawValue,
+          'array' => self::parseJsonBody($rawValue),
+          default => throw new ErrorException('Invalid body type'), // should be prevented in compile step
+        };
+      } else if ($kind === Router::KIND_REQUEST) {
+        $value = $request;
+      } else if ($kind === Router::KIND_RESPONSE) {
+        $value = $this->responseFactory->createResponse();
+      } else {
+        throw new ErrorException("Unknown param kind '$kind'");
+      }
+      $callMethodParams[] = $value;
     }
     $controller = $this->controllerResolver->get($payload->getControllerClass());
-    $res = call_user_func_array([$controller, $payload->getControllerMethod()], $methodParams);
-    if ($res === null) {
-      $payload = ControllerResponse::empty();
-    } else {
-      if ($res instanceof ResponseInterface) {
-        return $res;
-      }
-      if ($res instanceof ControllerResponse) {
-        $payload = $res;
-      } else {
-        $payload = ControllerResponse::fromBody($res);
-      }
+    $res = call_user_func_array([$controller, $payload->getControllerMethod()], $callMethodParams);
+    if ($res instanceof ResponseInterface) {
+      return $res;
     }
-    return $handler->handle($request->withAttribute(self::REQUEST_ATTRIBUTE, $payload));
+    if ($res instanceof ControllerResponse) {
+      $status = $res->getStatus();
+      $headers = $res->getHeaders();
+      $data = $res->getBody();
+    } else {
+      $status = 200;
+      $headers = [];
+      $data = $res;
+    }
+    $response = $this->responseFactory->createResponse($status);
+    if ($data !== null) {
+      if (is_string($data)) {
+        $contentType = 'text/html; charset=utf-8';
+      } else if (is_array($data)) {
+        $contentType = 'application/json';
+        $data = self::stringifyJsonBody($data);
+      } else {
+        throw new ErrorException('Response type ' . gettype($data) . ' not supported');
+      }
+      $headers['Content-Type'] = $contentType;
+      $response = $response->withBody($this->streamFactory->createStream($data));
+    }
+    foreach ($headers as $headerName => $headerValue) {
+      $response = $response->withHeader($headerName, $headerValue);
+    }
+    return $response;
+  }
+
+  private static function parseJsonBody(string $json) {
+    try {
+      return json_decode($json, flags: JSON_THROW_ON_ERROR | JSON_OBJECT_AS_ARRAY);
+    } catch (JsonException $ex) {
+      throw new RoutingException('Body parse error', code: 400, previous: $ex);
+    }
+  }
+
+  private static function stringifyJsonBody(mixed $data) {
+    return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_INVALID_UTF8_IGNORE);
   }
 
 }

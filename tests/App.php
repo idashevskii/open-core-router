@@ -56,8 +56,6 @@ final class App {
   }
 
   public function __construct(
-      private ResponseSerializer $responseSerializer,
-      private RequestParser $requestParser,
       private Executor $executor,
       private Router $router,
       private EchoAttributesMiddleware $echoAttributes,
@@ -95,9 +93,7 @@ final class App {
       $queue = [
         $this->errorHandlerMiddleware,
         $this->router,
-        $this->requestParser,
         $this->executor,
-        $this->responseSerializer,
       ];
     }
     $relay = new Relay($queue);

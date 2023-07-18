@@ -18,15 +18,23 @@ final class ExecutorPayload {
   public function __construct(
       private readonly string $controllerClass,
       private readonly string $controllerMethod,
-      private array $params,
+      private readonly array $paramKinds,
+      private readonly array $paramTypes,
+      private readonly array $paramRawValues,
   ) {
     
   }
 
-  public function withParamValue(int $index, mixed $value): ExecutorPayload {
-    $ret = clone $this;
-    $ret->params[$index] = $ret->params[$index]->withValue($value);
-    return $ret;
+  public function getParamKinds() {
+    return $this->paramKinds;
+  }
+
+  public function getParamTypes() {
+    return $this->paramTypes;
+  }
+
+  public function getParamRawValues() {
+    return $this->paramRawValues;
   }
 
   public function getControllerClass(): string {
@@ -35,13 +43,6 @@ final class ExecutorPayload {
 
   public function getControllerMethod(): string {
     return $this->controllerMethod;
-  }
-
-  /**
-   * @return ExecutorPayloadParam[]
-   */
-  public function getParams(): array {
-    return $this->params;
   }
 
 }

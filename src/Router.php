@@ -23,50 +23,48 @@ use OpenCore\Exceptions\RoutingException;
 final class Router implements MiddlewareInterface {
 
   public const REQUEST_ATTRIBUTE = '_routerPayload_';
-  private const CACHE_FORMAT = 1;
-  public const DEFINE = 'routerDefine';
+  private const CACHE_FORMAT = 2;
+
+  public const KIND_SEGMENT = 1;
+  public const KIND_BODY = 2;
+  public const KIND_QUERY = 3;
+  public const KIND_REQUEST = 4;
+  public const KIND_RESPONSE = 5;
 
   private ?array $tree;
+  private ?array $classes;
   private ?string $cacheFile = null;
 
   public function __construct(
       private RouterConfig $config,
   ) {
-    $tree = null;
-    if ($config->isCacheEnabled()) {
-      $cacheFile = sys_get_temp_dir() . '/op-router-cache.php';
-      if (file_exists($cacheFile)) {
-        $cache = include $cacheFile;
-        if ($cache['version'] === self::CACHE_FORMAT) {
-          $tree = $cache['tree'];
+    $cacheEnabled = $config->isCacheEnabled();
+    if ($cacheEnabled) {
+      $this->cacheFile = sys_get_temp_dir() . '/op-router-cache.php';
+      if (file_exists($this->cacheFile)) {
+        list('version' => $version, 'tree' => $this->tree, 'classes' => $this->classes) = include ($this->cacheFile);
+        if ($version === self::CACHE_FORMAT) {
+          return;
         }
       }
-      if (!$tree) {
-        $tree = $this->makeTree();
-        $cache = ['version' => self::CACHE_FORMAT, 'tree' => $tree];
-        file_put_contents($cacheFile, '<?php return ' . var_export($cache, true) . ';');
-      }
-      $this->cacheFile = $cacheFile;
-    } else {
-      $tree = $this->makeTree();
     }
-    $this->tree = $tree;
+    // recompile if there is no usable cache
+    $compiler = new RouterCompiler();
+    $this->config->define($compiler);
+    list($this->tree, $this->classes) = $compiler->compile(); // heavy operation
+    if (!$this->classes) {
+      throw new NoControllersException();
+    }
+    if ($cacheEnabled) {
+      $cache = ['version' => self::CACHE_FORMAT, 'tree' => $this->tree, 'classes' => $this->classes];
+      file_put_contents($this->cacheFile, '<?php return ' . var_export($cache, true) . ';');
+    }
   }
 
   public function clearCache() {
     if ($this->cacheFile && file_exists($this->cacheFile)) {
       unlink($this->cacheFile);
     }
-  }
-
-  private function makeTree(): array {
-    $compiler = new RouterCompiler();
-    $this->config->define($compiler);
-    $ret = $compiler->compile(); // heavy operation
-    if (!$ret) {
-      throw new NoControllersException();
-    }
-    return $ret;
   }
 
   private function resolveUriHandlers(string $uri) {
@@ -113,19 +111,24 @@ final class Router implements MiddlewareInterface {
     if (!isset($methodHandlers[$httpMethod])) {
       throw new RoutingException(code: 405);
     }
-    list($controllerClass, $controllerMethod, $paramsProps, $attrs) = $methodHandlers[$httpMethod];
-    $params = [];
+    list($classIndex, $controllerMethod, $paramsProps, $attrs) = $methodHandlers[$httpMethod];
+    $paramKinds = [];
+    $paramTypes = [];
+    $rawParamValues = [];
     foreach ($paramsProps as list($paramKind, $routeKey, $paramType)) {
-      if ($paramKind === ExecutorPayloadParam::KIND_SEGMENT) {
+      if ($paramKind === Router::KIND_SEGMENT) {
         $paramValue = $segmentParams[$routeKey]; // must exist
-      } else if ($paramKind === ExecutorPayloadParam::KIND_QUERY) {
-        $paramValue = isset($queryParams[$routeKey]) ? $queryParams[$routeKey] : null;
+      } else if ($paramKind === Router::KIND_QUERY) {
+        $paramValue = isset($queryParams[$routeKey]) ? (string) $queryParams[$routeKey] : null;
       } else {
         $paramValue = null;
       }
-      $params[] = new ExecutorPayloadParam($paramKind, $paramType, $paramValue);
+      $paramKinds[] = $paramKind;
+      $paramTypes[] = $paramType;
+      $rawParamValues[] = $paramValue;
     }
-    $attrs[self::REQUEST_ATTRIBUTE] = new ExecutorPayload($controllerClass, $controllerMethod, $params);
+    $attrs[self::REQUEST_ATTRIBUTE] = new ExecutorPayload(
+        $this->classes[$classIndex], $controllerMethod, $paramKinds, $paramTypes, $rawParamValues);
     foreach ($attrs as $key => $value) {
       $request = $request->withAttribute($key, $value);
     }

@@ -36,8 +36,9 @@ final class RouterCompiler {
   private array $tree = [];
   private array $classes = [];
 
-  private static function stringifyCallable(array $handler) {
-    list($class, $method) = $handler;
+  private function stringifyCallable(array $handler) {
+    list($classIndex, $method) = $handler;
+    $class = $this->classes[$classIndex];
     return "$class::$method";
   }
 
@@ -52,8 +53,8 @@ final class RouterCompiler {
       if (!$segments) {
         if (isset($handlerLink[$httpMethod])) {
           throw new AmbiguousRouteException("Ambiguous route for " . implode(' and ', [
-                    self::stringifyCallable($handler),
-                    self::stringifyCallable($handlerLink[$httpMethod]),
+                    $this->stringifyCallable($handler),
+                    $this->stringifyCallable($handlerLink[$httpMethod]),
           ]));
         }
         $handlerLink[$httpMethod] = $handler;
@@ -77,31 +78,32 @@ final class RouterCompiler {
       $paramType = ltrim((string) $rParam->getType(), '?'); // strip optionality marker;
       $supportedParamTypes = null;
       if ($rParam->getAttributes(Body::class, ReflectionAttribute::IS_INSTANCEOF)) {
-        $paramKind = ExecutorPayloadParam::KIND_BODY;
-        $supportedParamTypes = ['array'];
+        $paramKind = Router::KIND_BODY;
+        $supportedParamTypes = ['array', 'string'];
       } else if (is_a($paramType, ServerRequestInterface::class, true)) {
-        $paramKind = ExecutorPayloadParam::KIND_REQUEST;
+        $paramKind = Router::KIND_REQUEST;
+        $paramType = null;
       } else if (is_a($paramType, ResponseInterface::class, true)) {
-        $paramKind = ExecutorPayloadParam::KIND_RESPONSE;
+        $paramKind = Router::KIND_RESPONSE;
+        $paramType = null;
       } else if ($rParam->isOptional()) {
-        $paramKind = ExecutorPayloadParam::KIND_QUERY;
+        $paramKind = Router::KIND_QUERY;
         $supportedParamTypes = ['string', 'int', 'bool', 'float'];
       } else {
-        $paramKind = ExecutorPayloadParam::KIND_SEGMENT;
+        $paramKind = Router::KIND_SEGMENT;
         $supportedParamTypes = ['string', 'int'];
       }
       if ($supportedParamTypes && !in_array($paramType, $supportedParamTypes)) {
         throw new InvalidParamTypeException(
-                "Type '$paramType' of param '$paramName' for " . self::stringifyCallable($handler) . " in route '$uri' is not supported");
+                "Type '$paramType' of param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' is not supported");
       }
-      if ($paramKind === ExecutorPayloadParam::KIND_SEGMENT) {
-        if (isset($segnemtParamIndexMap[$paramName])) {
-          $key = $segnemtParamIndexMap[$paramName];
-        } else {
+      if ($paramKind === Router::KIND_SEGMENT) {
+        if (!isset($segnemtParamIndexMap[$paramName])) {
           throw new InconsistentParamsException(
-                  "No param '$paramName' for " . self::stringifyCallable($handler) . " in route '$uri'");
+                  "Route segment for param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' not found");
         }
-      } else if ($paramKind === ExecutorPayloadParam::KIND_QUERY) {
+        $key = $segnemtParamIndexMap[$paramName];
+      } else if ($paramKind === Router::KIND_QUERY) {
         $key = $paramName;
       } else {
         $key = null;
@@ -140,7 +142,7 @@ final class RouterCompiler {
     return [$segments, array_flip($segmentParams)];
   }
 
-  private function parseClass(string $class) {
+  private function parseClass(string $class, int $classIndex) {
     $rClass = new ReflectionClass($class);
     $rCtrlAttrs = $rClass->getAttributes(Controller::class, ReflectionAttribute::IS_INSTANCEOF);
     if (!$rCtrlAttrs) {
@@ -160,7 +162,7 @@ final class RouterCompiler {
       $route = $rRouteAttrs[0]->newInstance();
       $path = $prefix . '/' . $route->path;
       list($segments, $segnemtParamIndexMap) = $this->parsePath($path);
-      $handler = [$class, $rMethod->getName()];
+      $handler = [$classIndex, $rMethod->getName()];
       $params = $this->parseParams($segnemtParamIndexMap, $rMethod, $handler, $path);
       $routeAttrs = array_merge($commonAttrs, $this->parseAttributes($rMethod), $route->attributes ?? []);
       $this->insertHandlerToTree($route->method, $segments, [...$handler, $params, $routeAttrs]);
@@ -196,11 +198,11 @@ final class RouterCompiler {
   }
 
   public function compile() {
-    foreach ($this->classes as $class) {
-      $this->parseClass($class);
+    foreach ($this->classes as $classIndex => $class) {
+      $this->parseClass($class, $classIndex);
     }
     // file_put_contents('/tmp/routes.json', json_encode($this->tree, JSON_PRETTY_PRINT));die;
-    return $this->tree;
+    return [$this->tree, $this->classes];
   }
 
 }

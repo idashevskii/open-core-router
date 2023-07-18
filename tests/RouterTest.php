@@ -164,10 +164,16 @@ final class RouterTest extends TestCase {
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertCount(1, self::toJson($response));
 
+    $response = self::$app->handleRequest('GET', '/user', query: ['active' => '0']);
+    $this->assertEquals(200, $response->getStatusCode());
+
     $response = self::$app->handleRequest('GET', '/user', query: ['active' => '1']);
+    $this->assertEquals(200, $response->getStatusCode());
+
+    $response = self::$app->handleRequest('GET', '/user', query: ['active' => 'no']);
     $this->assertEquals(400, $response->getStatusCode());
 
-    $response = self::$app->handleRequest('GET', '/user', query: ['active' => '0']);
+    $response = self::$app->handleRequest('GET', '/user', query: ['active' => 'yes']);
     $this->assertEquals(400, $response->getStatusCode());
   }
 
