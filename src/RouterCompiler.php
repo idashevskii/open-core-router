@@ -29,9 +29,6 @@ final class RouterCompiler {
     
   }
 
-  private const SEGMENT_STATIC = 1;
-  private const SEGMENT_DYNAMIC = 2;
-
   // node: [staticSegments:{[value]:node}, dynamicSegmetns:[{param, node}], handlers:{[method]:{ctrl, fn, params}}]
   private array $tree = [];
   private array $classes = [];
@@ -61,7 +58,7 @@ final class RouterCompiler {
         break;
       }
       list($segmentType, $segmentArg) = array_shift($segments);
-      if ($segmentType === self::SEGMENT_STATIC) {
+      if ($segmentType === RouterParser::SEGMENT_STATIC) {
         $childNode = &$staticLink[$segmentArg];
       } else { // self::SEGMENT_DYNAMIC
         $childNode = &$dynamicLink;
@@ -72,27 +69,13 @@ final class RouterCompiler {
 
   private function parseParams(array $segnemtParamIndexMap, ReflectionMethod $rMethod, array $handler, string $uri): array {
     $ret = [];
-    foreach ($rMethod->getParameters() as $i => $rParam) {
-      /* @var $rParam ReflectionParameter */
-      $paramName = $rParam->name;
-      $paramType = ltrim((string) $rParam->getType(), '?'); // strip optionality marker;
-      $supportedParamTypes = null;
-      if ($rParam->getAttributes(Body::class, ReflectionAttribute::IS_INSTANCEOF)) {
-        $paramKind = RouterMiddleware::KIND_BODY;
-        $supportedParamTypes = ['array', 'string'];
-      } else if (is_a($paramType, ServerRequestInterface::class, true)) {
-        $paramKind = RouterMiddleware::KIND_REQUEST;
-        $paramType = null;
-      } else if (is_a($paramType, ResponseInterface::class, true)) {
-        $paramKind = RouterMiddleware::KIND_RESPONSE;
-        $paramType = null;
-      } else if ($rParam->isOptional()) {
-        $paramKind = RouterMiddleware::KIND_QUERY;
-        $supportedParamTypes = ['string', 'int', 'bool', 'float'];
-      } else {
-        $paramKind = RouterMiddleware::KIND_SEGMENT;
-        $supportedParamTypes = ['string', 'int'];
-      }
+    foreach (RouterParser::parseParams($rMethod) as list($paramName, $paramKind, $paramType)) {
+      $supportedParamTypes = match ($paramKind) {
+        RouterMiddleware::KIND_BODY => ['array', 'string'],
+        RouterMiddleware::KIND_QUERY => ['string', 'int', 'bool', 'float'],
+        RouterMiddleware::KIND_SEGMENT => ['string', 'int'],
+        default => null,
+      };
       if ($supportedParamTypes && !in_array($paramType, $supportedParamTypes)) {
         throw new InvalidParamTypeException(
                 "Type '$paramType' of param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' is not supported");
@@ -117,61 +100,25 @@ final class RouterCompiler {
     return $ret;
   }
 
-  private static function matchPlaceholder(string $str): ?string {
-    if (str_starts_with($str, '{') && str_ends_with($str, '}')) {
-      return substr($str, 1, strlen($str) - 2);
-    }
-    return null;
-  }
-
-  private function parsePath(string $path) {
-    $segments = [];
-    $segmentParams = [];
-    foreach (explode('/', $path) as $segment) {
-      if ($segment === '') {
-        continue;
-      }
-      $placeholder = self::matchPlaceholder($segment);
-      if ($placeholder) {
-        $segmentParams[] = $placeholder;
-        $segments[] = [self::SEGMENT_DYNAMIC, null];
-      } else {
-        $segments[] = [self::SEGMENT_STATIC, $segment];
-      }
-    }
-    return [$segments, array_flip($segmentParams)];
-  }
-
   private function parseClass(string $class, int $classIndex) {
     $rClass = new ReflectionClass($class);
-    $rCtrlAttrs = $rClass->getAttributes(Controller::class, ReflectionAttribute::IS_INSTANCEOF);
-    if (!$rCtrlAttrs) {
+    $controller = RouterParser::extractControllerAttr($rClass);
+    if (!$controller) {
       return;
     }
-    /* @var $rCtrlAttr Controller */
-    $rCtrlAttr = $rCtrlAttrs[0]->newInstance();
-    $prefix = $rCtrlAttr->prefix ?? '';
-    $commonAttrs = $this->parseAttributes($rClass);
+    $commonAttrs = self::parseAttributes($rClass);
     foreach ($rClass->getMethods(ReflectionMethod::IS_PUBLIC) as $rMethod) {
-      /* @var $rMethod ReflectionMethod */
-      $rRouteAttrs = $rMethod->getAttributes(Route::class);
-      if (!$rRouteAttrs) {
+      $route = RouterParser::extractRouteAttr($rMethod);
+      if (!$route) {
         continue;
       }
-      /* @var $route Route */
-      $route = $rRouteAttrs[0]->newInstance();
-      $path = $prefix . '/' . $route->path;
-      list($segments, $segnemtParamIndexMap) = $this->parsePath($path);
+      $path = RouterParser::makePath($controller, $route);
+      list($segments, $segnemtParamIndexMap) = RouterParser::parsePath($path);
       $handler = [$classIndex, $rMethod->getName()];
       $params = $this->parseParams($segnemtParamIndexMap, $rMethod, $handler, $path);
-      $routeAttrs = array_merge($commonAttrs, $this->parseAttributes($rMethod), $route->attributes ?? []);
+      $routeAttrs = array_merge($commonAttrs, self::parseAttributes($rMethod), $route->attributes ?? []);
       $this->insertHandlerToTree($route->method, $segments, [...$handler, $params, $routeAttrs]);
     }
-  }
-
-  private function parseAttributes(ReflectionMethod|ReflectionClass $rMethod) {
-    $rRouteAttrs = $rMethod->getAttributes(RouteAnnotation::class, ReflectionAttribute::IS_INSTANCEOF);
-    return array_merge(...array_map(fn($rAttr) => $rAttr->newInstance()->getAttributes(), $rRouteAttrs));
   }
 
   public function scan(string $namespace, string $dir) {
@@ -203,6 +150,11 @@ final class RouterCompiler {
     }
     // file_put_contents('/tmp/routes.json', json_encode($this->tree, JSON_PRETTY_PRINT));die;
     return [$this->tree, $this->classes];
+  }
+
+  private static function parseAttributes(ReflectionMethod|ReflectionClass $rMethod) {
+    $rRouteAttrs = $rMethod->getAttributes(RouteAnnotation::class, ReflectionAttribute::IS_INSTANCEOF);
+    return array_merge(...array_map(fn($rAttr) => $rAttr->newInstance()->getAttributes(), $rRouteAttrs));
   }
 
 }

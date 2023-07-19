@@ -22,7 +22,7 @@ use OpenCore\Exceptions\{
 };
 use Psr\Http\Message\ResponseInterface;
 
-final class RouterTest extends TestCase {
+final class RouterMiddlewareTest extends TestCase {
 
   private static ?App $app = null;
 
@@ -211,7 +211,4 @@ final class RouterTest extends TestCase {
     $this->assertEquals($msg, (string) $response->getBody());
   }
 
-//  public function testReverseRoute() {
-//    // TODO
-//  }
 }

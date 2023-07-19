@@ -24,7 +24,6 @@ final class RouterMiddleware implements MiddlewareInterface {
 
   public const REQUEST_ATTRIBUTE = '$$router';
   private const CACHE_FORMAT = 2;
-
   public const KIND_SEGMENT = 1;
   public const KIND_BODY = 2;
   public const KIND_QUERY = 3;

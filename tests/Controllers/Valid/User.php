@@ -18,7 +18,7 @@ use OpenCore\Route;
 use OpenCore\Body;
 use OpenCore\ControllerResponse;
 
-#[Controller('/user')]
+#[Controller('user')]
 class User {
 
   public function __construct() {
