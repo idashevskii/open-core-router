@@ -28,13 +28,13 @@ final class ReverseRouterTest extends TestCase {
 
   public function testStaticRoute() {
     $url = $this->reverseRouter->for(User::class)->addUser(1, hello: 'world');
-    $this->assertEquals('/user', $url);
+    $this->assertEquals('/user', (string) $url);
   }
 
   public function testSegmentParams() {
     $id = 999;
     $url = $this->reverseRouter->for(User::class)->getUserRoles($id);
-    $this->assertEquals("/user/$id/roles", $url);
+    $this->assertEquals("/user/$id/roles", (string) $url);
   }
 
   public function testQueryParams() {
@@ -42,19 +42,19 @@ final class ReverseRouterTest extends TestCase {
     $filterValue = 'some-value';
 
     $url = $this->reverseRouter->for(User::class)->getUsers(filterKey: $filterKey, filterValue: $filterValue, active: true);
-    $this->assertEquals("/user?filterKey=$filterKey&filterValue=$filterValue&active=true", $url);
+    $this->assertEquals("/user?filterKey=$filterKey&filterValue=$filterValue&active=true", (string) $url);
 
     $url = $this->reverseRouter->for(User::class)->getUsers($filterKey, $filterValue, active: false);
-    $this->assertEquals("/user?filterKey=$filterKey&filterValue=$filterValue&active=false", $url);
+    $this->assertEquals("/user?filterKey=$filterKey&filterValue=$filterValue&active=false", (string) $url);
   }
 
   public function testBodyParam() {
     $id = 999;
     $url = $this->reverseRouter->for(User::class)->editUser($id);
-    $this->assertEquals("/user/$id", $url);
+    $this->assertEquals("/user/$id", (string) $url);
 
     $url = $this->reverseRouter->for(User::class)->editUser($id, body: []);
-    $this->assertEquals("/user/$id", $url);
+    $this->assertEquals("/user/$id", (string) $url);
   }
 
 }

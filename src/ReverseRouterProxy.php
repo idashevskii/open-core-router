@@ -66,14 +66,21 @@ final class ReverseRouterProxy {
     }
     list($params, $resSegments, $nameToAbsIdxMap, $path) = $this->cache[$methodName];
     $query = [];
-    foreach ($params as $i => list($paramName, $paramKind, $paramType)) {
-      $value = $arguments[$i] ?? ($arguments[$paramName] ?? null);
-      if ($value !== null && $paramType === 'bool') {
-        $value = $value ? 'true' : 'false';
+    $argIndex = 0;
+    foreach ($params as list($paramName, $paramKind, $paramType)) {
+      if ($paramKind !== RouterMiddleware::KIND_QUERY && $paramKind !== RouterMiddleware::KIND_SEGMENT) {
+        continue;
       }
+      $value = $arguments[$argIndex++] ?? ($arguments[$paramName] ?? null);
       if ($paramKind === RouterMiddleware::KIND_QUERY) {
+        if ($value === null) {
+          continue;
+        }
+        if ($paramType === 'bool') {
+          $value = $value ? 'true' : 'false';
+        }
         $query[$paramName] = $value;
-      } else if ($paramKind === RouterMiddleware::KIND_SEGMENT) {
+      } else { // RouterMiddleware::KIND_SEGMENT
         if ($value === null) {
           throw new ErrorException("Param $paramName in route '$path' is required");
         }

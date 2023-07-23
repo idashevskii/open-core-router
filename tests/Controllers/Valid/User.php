@@ -17,6 +17,7 @@ use OpenCore\Controller;
 use OpenCore\Route;
 use OpenCore\Body;
 use OpenCore\ControllerResponse;
+use Psr\Http\Message\ServerRequestInterface;
 
 #[Controller('user')]
 class User {
@@ -31,7 +32,7 @@ class User {
   ];
 
   #[Route('GET', '')]
-  public function getUsers(?string $filterKey = null, ?string $filterValue = null, ?bool $active = null) {
+  public function getUsers(ServerRequestInterface $req, ?string $filterKey = null, ?string $filterValue = null, ?bool $active = null) {
     $ret = $this->users;
     if ($filterKey === 'role') {
       $ret = array_filter($ret, fn($u) => in_array($filterValue, $u['roles']));
@@ -43,7 +44,7 @@ class User {
   }
 
   #[Route('POST', '')]
-  public function addUser(#[Body] array $user) {
+  public function addUser(ServerRequestInterface $req, #[Body] array $user) {
     if (!isset($user['id'])) {
       return ControllerResponse::fromStatus(418);
     }
@@ -55,7 +56,7 @@ class User {
   }
 
   #[Route('PUT', '')]
-  public function putUser(#[Body] array $user) {
+  public function putUser(ServerRequestInterface $req, #[Body] array $user) {
     $id = $user['id'];
     $isNew = isset($this->users[$id]);
     $this->users[$id] = $user;
@@ -63,7 +64,7 @@ class User {
   }
 
   #[Route('GET', '{id}')]
-  public function getUser(int $id) {
+  public function getUser(int $id, ServerRequestInterface $req) {
     if (!isset($this->users[$id])) {
       return ControllerResponse::fromStatus(404);
     }
@@ -71,7 +72,7 @@ class User {
   }
 
   #[Route('DELETE', '{id}')]
-  public function deleteUser(int $id) {
+  public function deleteUser(ServerRequestInterface $req, int $id) {
     if (!isset($this->users[$id])) {
       return ControllerResponse::fromStatus(404);
     }
@@ -80,7 +81,7 @@ class User {
   }
 
   #[Route('PATCH', '{id}')]
-  public function editUser(int $id, #[Body] array $data) {
+  public function editUser(int $id, ServerRequestInterface $req, #[Body] array $data, bool $optional = null) {
     if (isset($data['name'])) {
       $this->users[$id]['name'] = $data['name'];
     }
@@ -91,7 +92,7 @@ class User {
   }
 
   #[Route('GET', '{id}/roles')]
-  public function getUserRoles(int $id) {
+  public function getUserRoles(ServerRequestInterface $req, int $id) {
     return $this->users[$id]['roles'];
   }
 
