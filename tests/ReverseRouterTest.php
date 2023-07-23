@@ -15,13 +15,15 @@ namespace OpenCore;
 
 use PHPUnit\Framework\TestCase;
 use OpenCore\Controllers\Valid\User;
+use Nyholm\Psr7\Factory\Psr17Factory;
 
 final class ReverseRouterTest extends TestCase {
 
   private ReverseRouter $reverseRouter;
 
   protected function setUp(): void {
-    $this->reverseRouter = new ReverseRouter(null);
+    $psrFactory = new Psr17Factory();
+    $this->reverseRouter = new ReverseRouter($psrFactory);
   }
 
   public function testStaticRoute() {

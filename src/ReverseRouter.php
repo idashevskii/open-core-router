@@ -15,13 +15,14 @@ namespace OpenCore;
 
 use ReflectionClass;
 use ErrorException;
+use Psr\Http\Message\UriFactoryInterface;
 
 final class ReverseRouter {
 
   private array $cache = [];
 
   public function __construct(
-//      private RouterConfig $config,
+      private UriFactoryInterface $uriFactoryInterface,
   ) {
     
   }
@@ -39,7 +40,7 @@ final class ReverseRouter {
     if (!$controller) {
       throw new ErrorException("Class '$controllerClass' is not controller");
     }
-    return new ReverseRouterProxy($controller, $rClass);
+    return new ReverseRouterProxy($controller, $rClass, $this->uriFactoryInterface);
   }
 
 }

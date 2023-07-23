@@ -15,6 +15,7 @@ namespace OpenCore;
 
 use ReflectionClass;
 use ErrorException;
+use Psr\Http\Message\UriFactoryInterface;
 
 final class ReverseRouterProxy {
 
@@ -23,6 +24,7 @@ final class ReverseRouterProxy {
   public function __construct(
       private Controller $controller,
       private ReflectionClass $rClass,
+      private UriFactoryInterface $uriFactoryInterface,
   ) {
     
   }
@@ -53,6 +55,11 @@ final class ReverseRouterProxy {
     return [$params, $resSegments, $nameToAbsIdxMap, $path];
   }
 
+  /**
+   * @param string $methodName
+   * @param array $arguments
+   * @return UriFactoryInterface
+   */
   public function __call(string $methodName, array $arguments) {
     if (!isset($this->cache[$methodName])) {
       $this->cache[$methodName] = $this->prepareMeta($methodName);
@@ -73,7 +80,11 @@ final class ReverseRouterProxy {
         $resSegments[$nameToAbsIdxMap[$paramName]] = $value;
       }
     }
-    return '/' . implode('/', $resSegments) . ($query ? '?' . http_build_query($query) : '');
+    $ret = $this->uriFactoryInterface->createUri('/' . implode('/', $resSegments));
+    if ($query) {
+      $ret = $ret->withQuery(http_build_query($query));
+    }
+    return $ret;
   }
 
 }
