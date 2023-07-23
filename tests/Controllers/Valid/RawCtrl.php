@@ -15,21 +15,24 @@ namespace OpenCore\Controllers\Valid;
 
 use OpenCore\Controller;
 use OpenCore\Route;
-use OpenCore\Body;
-use OpenCore\ControllerResponse;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
-#[Controller('/raw')]
+#[Controller('raw/echo')]
 class RawCtrl {
 
   public function __construct() {
     
   }
 
-  #[Route('POST', 'echo')]
-  public function getDefault(ServerRequestInterface $req, ResponseInterface $res) {
+  #[Route('POST', 'str')]
+  public function getStr(ServerRequestInterface $req, ResponseInterface $res) {
     return $res->withBody($req->getBody());
+  }
+
+  #[Route('POST', 'stream')]
+  public function getStream(ServerRequestInterface $req) {
+    return $req->getBody();
   }
 
 }

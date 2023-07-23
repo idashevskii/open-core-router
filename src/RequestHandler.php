@@ -20,6 +20,7 @@ use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Container\ContainerInterface;
 use OpenCore\Exceptions\RoutingException;
+use Psr\Http\Message\StreamInterface;
 use \JsonException;
 
 final class RequestHandler implements RequestHandlerInterface {
@@ -95,14 +96,18 @@ final class RequestHandler implements RequestHandlerInterface {
     if ($data !== null) {
       if (is_string($data)) {
         $contentType = 'text/html; charset=utf-8';
+        $body=$this->streamFactory->createStream($data);
       } else if (is_array($data)) {
         $contentType = 'application/json';
-        $data = self::stringifyJsonBody($data);
+        $body=$this->streamFactory->createStream(self::stringifyJsonBody($data));
+      } else if ($data instanceof StreamInterface) {
+        $contentType = 'text/html; charset=utf-8';
+        $body=$data;
       } else {
         throw new ErrorException('Response type ' . gettype($data) . ' not supported');
       }
       $headers['Content-Type'] = $contentType;
-      $response = $response->withBody($this->streamFactory->createStream($data));
+      $response = $response->withBody($body);
     }
     foreach ($headers as $headerName => $headerValue) {
       $response = $response->withHeader($headerName, $headerValue);

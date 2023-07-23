@@ -206,7 +206,14 @@ final class RouterMiddlewareTest extends TestCase {
 
   public function testRawRequestResponse() {
     $msg = 'This is message!';
-    $response = self::$app->handleRequest('POST', '/raw/echo', payloadStr: $msg);
+    $response = self::$app->handleRequest('POST', '/raw/echo/str', payloadStr: $msg);
+    $this->assertEquals(200, $response->getStatusCode());
+    $this->assertEquals($msg, (string) $response->getBody());
+  }
+
+  public function testControllerStreamResult() {
+    $msg = 'This is message!';
+    $response = self::$app->handleRequest('POST', '/raw/echo/stream', payloadStr: $msg);
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertEquals($msg, (string) $response->getBody());
   }
