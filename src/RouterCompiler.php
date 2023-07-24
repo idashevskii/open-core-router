@@ -71,22 +71,22 @@ final class RouterCompiler {
     $ret = [];
     foreach (RouterParser::parseParams($rMethod) as list($paramName, $paramKind, $paramType)) {
       $supportedParamTypes = match ($paramKind) {
-        RouterMiddleware::KIND_BODY => ['array', 'string'],
-        RouterMiddleware::KIND_QUERY => ['string', 'int', 'bool', 'float'],
-        RouterMiddleware::KIND_SEGMENT => ['string', 'int'],
+        Router::KIND_BODY => ['array', 'string'],
+        Router::KIND_QUERY => ['string', 'int', 'bool', 'float'],
+        Router::KIND_SEGMENT => ['string', 'int'],
         default => null,
       };
       if ($supportedParamTypes && !in_array($paramType, $supportedParamTypes)) {
         throw new InvalidParamTypeException(
                 "Type '$paramType' of param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' is not supported");
       }
-      if ($paramKind === RouterMiddleware::KIND_SEGMENT) {
+      if ($paramKind === Router::KIND_SEGMENT) {
         if (!isset($segnemtParamIndexMap[$paramName])) {
           throw new InconsistentParamsException(
                   "Route segment for param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' not found");
         }
         $key = $segnemtParamIndexMap[$paramName];
-      } else if ($paramKind === RouterMiddleware::KIND_QUERY) {
+      } else if ($paramKind === Router::KIND_QUERY) {
         $key = $paramName;
       } else {
         $key = null;

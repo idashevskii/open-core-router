@@ -68,11 +68,11 @@ final class ReverseRouterProxy {
     $query = [];
     $argIndex = 0;
     foreach ($params as list($paramName, $paramKind, $paramType)) {
-      if ($paramKind !== RouterMiddleware::KIND_QUERY && $paramKind !== RouterMiddleware::KIND_SEGMENT) {
+      if ($paramKind !== Router::KIND_QUERY && $paramKind !== Router::KIND_SEGMENT) {
         continue;
       }
       $value = $arguments[$argIndex++] ?? ($arguments[$paramName] ?? null);
-      if ($paramKind === RouterMiddleware::KIND_QUERY) {
+      if ($paramKind === Router::KIND_QUERY) {
         if ($value === null) {
           continue;
         }

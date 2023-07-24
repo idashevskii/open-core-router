@@ -37,13 +37,13 @@ final class RequestHandler implements RequestHandlerInterface {
   }
 
   public function handle(ServerRequestInterface $request): ResponseInterface {
-    $payload = $request->getAttribute(RouterMiddleware::REQUEST_ATTRIBUTE);
+    $payload = $request->getAttribute(Router::REQUEST_ATTRIBUTE);
     /* @var $payload RouterOutput */
     $paramRawValues = $payload->getParamRawValues();
     $paramTypes = $payload->getParamTypes();
     $callMethodParams = [];
     foreach ($payload->getParamKinds() as $i => $kind) {
-      if ($kind === RouterMiddleware::KIND_SEGMENT || $kind === RouterMiddleware::KIND_QUERY) {
+      if ($kind === Router::KIND_SEGMENT || $kind === Router::KIND_QUERY) {
         $rawValue = $paramRawValues[$i];
         if ($rawValue === null) {
           $value = null; // optional param not specified, nothing to convert
@@ -60,7 +60,7 @@ final class RequestHandler implements RequestHandlerInterface {
             default => throw new ErrorException('Invalid param type'), // should be checked in compile step
           };
         }
-      } else if ($kind === RouterMiddleware::KIND_BODY) {
+      } else if ($kind === Router::KIND_BODY) {
         $rawValue = (string) $request->getBody();
         if (!$rawValue) {
           throw new RoutingException('Body not provided', code: 400);
@@ -70,9 +70,9 @@ final class RequestHandler implements RequestHandlerInterface {
           'array' => self::parseJsonBody($rawValue),
           default => throw new ErrorException('Invalid body type'), // should be prevented in compile step
         };
-      } else if ($kind === RouterMiddleware::KIND_REQUEST) {
+      } else if ($kind === Router::KIND_REQUEST) {
         $value = $request;
-      } else if ($kind === RouterMiddleware::KIND_RESPONSE) {
+      } else if ($kind === Router::KIND_RESPONSE) {
         $value = $this->responseFactory->createResponse();
       } else {
         throw new ErrorException("Unknown param kind '$kind'");

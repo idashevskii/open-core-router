@@ -492,16 +492,16 @@
         },
         {
             "name": "open-core/injector",
-            "version": "1.1.0",
+            "version": "1.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/idashevskii/open-core-injector.git",
-                "reference": "6e9979c25c9f4e5b1ea2659d7c5f1d3c83c2d501"
+                "reference": "62e6a32cf70411e2625826fc34088fefcb032042"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/idashevskii/open-core-injector/zipball/6e9979c25c9f4e5b1ea2659d7c5f1d3c83c2d501",
-                "reference": "6e9979c25c9f4e5b1ea2659d7c5f1d3c83c2d501",
+                "url": "https://api.github.com/repos/idashevskii/open-core-injector/zipball/62e6a32cf70411e2625826fc34088fefcb032042",
+                "reference": "62e6a32cf70411e2625826fc34088fefcb032042",
                 "shasum": ""
             },
             "require": {
@@ -527,9 +527,9 @@
             "description": "PSR complaint dependency injectiion framework",
             "support": {
                 "issues": "https://github.com/idashevskii/open-core-injector/issues",
-                "source": "https://github.com/idashevskii/open-core-injector/tree/1.1.0"
+                "source": "https://github.com/idashevskii/open-core-injector/tree/1.2.0"
             },
-            "time": "2023-07-12T09:08:11+00:00"
+            "time": "2023-07-24T18:51:46+00:00"
         },
         {
             "name": "phar-io/manifest",

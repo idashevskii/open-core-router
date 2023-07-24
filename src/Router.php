@@ -20,10 +20,9 @@ use Psr\Http\Message\ResponseInterface;
 use OpenCore\Exceptions\NoControllersException;
 use OpenCore\Exceptions\RoutingException;
 
-final class RouterMiddleware implements MiddlewareInterface {
+final class Router implements MiddlewareInterface {
 
   public const REQUEST_ATTRIBUTE = '$$router';
-  private const CACHE_FORMAT = 2;
   public const KIND_SEGMENT = 1;
   public const KIND_BODY = 2;
   public const KIND_QUERY = 3;
@@ -32,37 +31,17 @@ final class RouterMiddleware implements MiddlewareInterface {
 
   private ?array $tree;
   private ?array $classes;
-  private ?string $cacheFile = null;
 
-  public function __construct(
-      private RouterConfig $config,
-  ) {
-    $cacheEnabled = $config->isCacheEnabled();
-    if ($cacheEnabled) {
-      $this->cacheFile = sys_get_temp_dir() . '/op-router-cache.php';
-      if (file_exists($this->cacheFile)) {
-        list('version' => $version, 'tree' => $this->tree, 'classes' => $this->classes) = include ($this->cacheFile);
-        if ($version === self::CACHE_FORMAT) {
-          return;
-        }
+  public function __construct(RouterConfig $config) {
+    list($this->tree, $this->classes) = $config->storeCompiledData(function ()use ($config) {
+      $compiler = new RouterCompiler();
+      foreach ($config->getControllerDirs() as $ns => $dir) {
+        $compiler->scan($ns, $dir);
       }
-    }
-    // recompile if there is no usable cache
-    $compiler = new RouterCompiler();
-    $this->config->define($compiler);
-    list($this->tree, $this->classes) = $compiler->compile(); // heavy operation
+      return $compiler->compile(); // heavy operation
+    });
     if (!$this->classes) {
       throw new NoControllersException();
-    }
-    if ($cacheEnabled) {
-      $cache = ['version' => self::CACHE_FORMAT, 'tree' => $this->tree, 'classes' => $this->classes];
-      file_put_contents($this->cacheFile, '<?php return ' . var_export($cache, true) . ';');
-    }
-  }
-
-  public function clearCache() {
-    if ($this->cacheFile && file_exists($this->cacheFile)) {
-      unlink($this->cacheFile);
     }
   }
 
@@ -115,9 +94,9 @@ final class RouterMiddleware implements MiddlewareInterface {
     $paramTypes = [];
     $rawParamValues = [];
     foreach ($paramsProps as list($paramKind, $routeKey, $paramType)) {
-      if ($paramKind === RouterMiddleware::KIND_SEGMENT) {
+      if ($paramKind === Router::KIND_SEGMENT) {
         $paramValue = $segmentParams[$routeKey]; // must exist
-      } else if ($paramKind === RouterMiddleware::KIND_QUERY) {
+      } else if ($paramKind === Router::KIND_QUERY) {
         $paramValue = isset($queryParams[$routeKey]) ? (string) $queryParams[$routeKey] : null;
       } else {
         $paramValue = null;

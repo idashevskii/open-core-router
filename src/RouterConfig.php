@@ -13,9 +13,20 @@ declare(strict_types=1);
 
 namespace OpenCore;
 
+use Closure;
+
 interface RouterConfig {
 
-  function define(RouterCompiler $compiler);
+  /**
+   * Controllers lookup PSR-4 map [rootNamespace=>dir]
+   * @return array
+   */
+  function getControllerDirs(): array;
 
-  function isCacheEnabled(): bool;
+  /**
+   * Stores and restores compiled data
+   * @param Closure $dataProvider generates data for first initial time
+   * @return array
+   */
+  function storeCompiledData(Closure $dataProvider): array;
 }

@@ -26,48 +26,36 @@ use OpenCore\Uitls\ErrorHandlerMiddleware;
 
 final class App {
 
-  public static function create(array $scanNs, bool $useCache = false): App {
+  public static function create(array $scanNs): App {
     $injector = Injector::create();
     $injector->set(ContainerInterface::class, $injector);
-    $psrFactory = new Psr17Factory();
-    $injector->set(StreamFactoryInterface::class, $psrFactory);
-    $injector->set(ResponseFactoryInterface::class, $psrFactory);
-    $injector->set(ServerRequestFactoryInterface::class, $psrFactory);
-
-    $injector->set(RouterConfig::class, new class($scanNs, $useCache) implements RouterConfig {
-
-      public function __construct(private $scanNs, private $useCache) {
-        
-      }
-
-      public function define(RouterCompiler $compiler) {
-        foreach ($this->scanNs as $ns) {
-          $ns = 'Controllers/' . $ns;
-          $compiler->scan(__NAMESPACE__ . '\\' . strtr($ns, '/', '\\'), __DIR__ . '/' . $ns);
-        }
-      }
-
-      public function isCacheEnabled(): bool {
-        return $this->useCache;
-      }
-    });
+    $injector->alias(StreamFactoryInterface::class, Psr17Factory::class);
+    $injector->alias(ResponseFactoryInterface::class, Psr17Factory::class);
+    $injector->alias(ServerRequestFactoryInterface::class, Psr17Factory::class);
+    $injector->alias(RouterConfig::class, AppConfig::class);
+    $injector->set(AppConfig::INJECT_CONTROLLER_SCAN_NS, $scanNs);
+    $injector->set(AppConfig::INJECT_ROUTER_DATA_FILE,
+        sys_get_temp_dir() . '/' . strtolower(strtr(implode('_', $scanNs), '\\', '.')) . '.php');
 
     return $injector->get(self::class);
   }
 
   public function __construct(
       private RequestHandler $requestHandler,
-      private RouterMiddleware $routerMiddleware,
+      private Router $routerMiddleware,
       private EchoAttributesMiddleware $echoAttributes,
       private StreamFactoryInterface $streamFactory,
       private ServerRequestFactoryInterface $serverRequestFactory,
       private ErrorHandlerMiddleware $errorHandlerMiddleware,
+      #[Inject(AppConfig::INJECT_ROUTER_DATA_FILE)] private string $routerDataFile,
   ) {
     
   }
 
   public function clear() {
-    $this->routerMiddleware->clearCache();
+    if (file_exists($this->routerDataFile)) {
+      unlink($this->routerDataFile);
+    }
   }
 
   public function handleRequest(string $method, string $uri,

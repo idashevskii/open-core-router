@@ -22,12 +22,12 @@ use OpenCore\Exceptions\{
 };
 use Psr\Http\Message\ResponseInterface;
 
-final class RouterMiddlewareTest extends TestCase {
+final class RouterTest extends TestCase {
 
   private static ?App $app = null;
 
   protected function setUp(): void {
-    self::$app = App::create(['Valid', 'UnusedHuge'], useCache: true);
+    self::$app = App::create(['Valid', 'UnusedHuge']);
   }
 
   public static function tearDownAfterClass(): void {
