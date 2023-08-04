@@ -16,9 +16,7 @@ namespace OpenCore;
 use ReflectionClass;
 use ReflectionAttribute;
 use ReflectionMethod;
-use ReflectionParameter;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\ResponseInterface;
+use OpenCore\Exceptions\NoControllersException;
 use OpenCore\Exceptions\InvalidParamTypeException;
 use OpenCore\Exceptions\InconsistentParamsException;
 use OpenCore\Exceptions\AmbiguousRouteException;
@@ -162,6 +160,9 @@ final class RouterCompiler {
   public function compile() {
     foreach ($this->classes as $classIndex => $class) {
       $this->parseClass($class, $classIndex);
+    }
+    if (!$this->classes) {
+      throw new NoControllersException();
     }
     return [$this->tree, $this->classes];
   }

@@ -17,7 +17,6 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use OpenCore\Exceptions\NoControllersException;
 use OpenCore\Exceptions\RoutingException;
 
 final class Router implements MiddlewareInterface {
@@ -40,9 +39,6 @@ final class Router implements MiddlewareInterface {
       }
       return $compiler->compile(); // heavy operation
     });
-    if (!$this->classes) {
-      throw new NoControllersException();
-    }
   }
 
   private function resolveUriHandlers(string $uri) {
