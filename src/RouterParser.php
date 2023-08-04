@@ -26,21 +26,19 @@ final class RouterParser {
   public const SEGMENT_DYNAMIC = 2;
 
   public static function parsePath(string $path) {
-    $segments = [];
-    $segmentParams = [];
+    $ret = [];
     foreach (explode('/', $path) as $segment) {
       if ($segment === '') {
         continue;
       }
       $placeholder = self::matchPlaceholder($segment);
       if ($placeholder) {
-        $segmentParams[] = $placeholder;
-        $segments[] = [self::SEGMENT_DYNAMIC, null];
+        $ret[] = [self::SEGMENT_DYNAMIC, $placeholder];
       } else {
-        $segments[] = [self::SEGMENT_STATIC, $segment];
+        $ret[] = [self::SEGMENT_STATIC, $segment];
       }
     }
-    return [$segments, array_flip($segmentParams)];
+    return $ret;
   }
 
   private static function matchPlaceholder(string $str): ?string {

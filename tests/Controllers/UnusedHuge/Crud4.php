@@ -37,7 +37,7 @@ class Crud4 {
   }
 
   #[Route('GET', '{id}')]
-  public function get(#[Body] array $data) {
+  public function get(#[Body] array $data, int $id) {
     return [];
   }
 
@@ -67,7 +67,7 @@ class Crud4 {
   }
 
   #[Route('GET', 'sub1/{id}')]
-  public function getSub1(#[Body] array $data) {
+  public function getSub1(int $id, #[Body] array $data) {
     return [];
   }
 
@@ -97,7 +97,7 @@ class Crud4 {
   }
 
   #[Route('GET', 'sub2/{id}')]
-  public function getSub2(#[Body] array $data) {
+  public function getSub2(int $id, #[Body] array $data) {
     return [];
   }
 
@@ -127,7 +127,7 @@ class Crud4 {
   }
 
   #[Route('GET', 'sub3/{id}')]
-  public function getSub3(#[Body] array $data) {
+  public function getSub3(int $id, #[Body] array $data) {
     return [];
   }
 
@@ -152,7 +152,7 @@ class Crud4 {
   }
 
   #[Route('GET', 'sub4/{id}')]
-  public function getSub4(#[Body] array $data) {
+  public function getSub4(int $id, #[Body] array $data) {
     return [];
   }
 
@@ -177,7 +177,7 @@ class Crud4 {
   }
 
   #[Route('GET', 'sub5/{id}')]
-  public function getSub5(#[Body] array $data) {
+  public function getSub5(int $id, #[Body] array $data) {
     return [];
   }
 
@@ -202,7 +202,7 @@ class Crud4 {
   }
 
   #[Route('GET', 'sub6/{id}')]
-  public function getSub6(#[Body] array $data) {
+  public function getSub6(int $id, #[Body] array $data) {
     return [];
   }
 
@@ -227,7 +227,7 @@ class Crud4 {
   }
 
   #[Route('GET', 'sub7/{id}')]
-  public function getSub7(#[Body] array $data) {
+  public function getSub7(int $id, #[Body] array $data) {
     return [];
   }
 
@@ -252,7 +252,7 @@ class Crud4 {
   }
 
   #[Route('GET', 'sub8/{id}')]
-  public function getSub8(#[Body] array $data) {
+  public function getSub8(int $id, #[Body] array $data) {
     return [];
   }
 

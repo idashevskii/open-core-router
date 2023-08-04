@@ -36,22 +36,18 @@ final class ReverseRouterProxy {
       throw new ErrorException("Method '$methodName' is not route");
     }
     $path = RouterParser::makePath($this->controller, $route);
-    list($segments, $segnemtParamIndexMap) = RouterParser::parsePath($path);
+    $segments = RouterParser::parsePath($path);
     $resSegments = [];
-    $dynSeqIdxToAbsIdxMap = [];
+    $nameToAbsIdxMap = [];
     foreach ($segments as $i => list($segmentType, $segmentArg)) {
       if ($segmentType === RouterParser::SEGMENT_STATIC) {
         $resSegments[] = $segmentArg;
       } else {
-        $dynSeqIdxToAbsIdxMap[] = $i;
+        $nameToAbsIdxMap[$segmentArg] = $i;
         $resSegments[] = null;
       }
     }
     $params = RouterParser::parseParams($rMethod);
-    $nameToAbsIdxMap = [];
-    foreach ($segnemtParamIndexMap as $segmentName => $dynSeqIndex) {
-      $nameToAbsIdxMap[$segmentName] = $dynSeqIdxToAbsIdxMap[$dynSeqIndex];
-    }
     return [$params, $resSegments, $nameToAbsIdxMap, $path];
   }
 

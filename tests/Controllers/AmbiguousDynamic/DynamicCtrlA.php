@@ -24,7 +24,7 @@ class DynamicCtrlA {
   }
 
   #[Route('GET', 'segment1/{param1}/segment2/{param2}')]
-  public function handleRequest() {
+  public function handleRequest(int $param1, int $param2) {
     return null;
   }
 

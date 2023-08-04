@@ -67,8 +67,18 @@ final class RouterCompiler {
     }
   }
 
-  private function parseParams(array $segnemtParamIndexMap, ReflectionMethod $rMethod, array $handler, string $uri): array {
+  private function parseParams(array $segmets, ReflectionMethod $rMethod, array $handler, string $uri): array {
     $ret = [];
+
+    $expectedDynamicSegments = [];
+    foreach ($segmets as list($segmentType, $segmentArg)) {
+      if ($segmentType === RouterParser::SEGMENT_DYNAMIC) {
+        $expectedDynamicSegments[] = $segmentArg;
+      }
+    }
+    $actualDynamicSegments = [];
+    $segnemtParamIndexMap = array_flip($expectedDynamicSegments);
+
     foreach (RouterParser::parseParams($rMethod) as list($paramName, $paramKind, $paramType)) {
       $supportedParamTypes = match ($paramKind) {
         Router::KIND_BODY => ['array', 'string'],
@@ -81,11 +91,8 @@ final class RouterCompiler {
                 "Type '$paramType' of param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' is not supported");
       }
       if ($paramKind === Router::KIND_SEGMENT) {
-        if (!isset($segnemtParamIndexMap[$paramName])) {
-          throw new InconsistentParamsException(
-                  "Route segment for param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' not found");
-        }
-        $key = $segnemtParamIndexMap[$paramName];
+        $actualDynamicSegments[] = $paramName;
+        $key = $segnemtParamIndexMap[$paramName] ?? null;
       } else if ($paramKind === Router::KIND_QUERY) {
         $key = $paramName;
       } else {
@@ -96,6 +103,14 @@ final class RouterCompiler {
         $key,
         $paramType,
       ];
+    }
+    sort($expectedDynamicSegments);
+    sort($actualDynamicSegments);
+    if ($expectedDynamicSegments !== $actualDynamicSegments) {
+      throw new InconsistentParamsException(
+              "Inconsistent route '$uri' and method '" . $this->stringifyCallable($handler) . "' params."
+              . " Expected: (" . implode(', ', $expectedDynamicSegments) . ")."
+              . " Actual: (" . implode(', ', $actualDynamicSegments) . ")");
     }
     return $ret;
   }
@@ -113,9 +128,9 @@ final class RouterCompiler {
         continue;
       }
       $path = RouterParser::makePath($controller, $route);
-      list($segments, $segnemtParamIndexMap) = RouterParser::parsePath($path);
+      $segments = RouterParser::parsePath($path);
       $handler = [$classIndex, $rMethod->getName()];
-      $params = $this->parseParams($segnemtParamIndexMap, $rMethod, $handler, $path);
+      $params = $this->parseParams($segments, $rMethod, $handler, $path);
       $routeAttrs = array_merge($commonAttrs, self::parseAttributes($rMethod), $route->attributes ?? []);
       $this->insertHandlerToTree($route->method, $segments, [...$handler, $params, $routeAttrs]);
     }
@@ -148,7 +163,6 @@ final class RouterCompiler {
     foreach ($this->classes as $classIndex => $class) {
       $this->parseClass($class, $classIndex);
     }
-    // file_put_contents('/tmp/routes.json', json_encode($this->tree, JSON_PRETTY_PRINT));die;
     return [$this->tree, $this->classes];
   }
 

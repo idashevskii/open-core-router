@@ -19,6 +19,7 @@ use OpenCore\RouteAnnotations\Auth;
 use OpenCore\RouteAnnotations\CtrlCommon;
 use OpenCore\RouteAnnotations\NoCsrf;
 use OpenCore\Body;
+use Psr\Http\Message\ServerRequestInterface;
 
 #[Controller('/hello')]
 #[CtrlCommon()]
@@ -42,6 +43,11 @@ class HelloCtrl {
   public function customGreeting(string $name, string $greeting, string $title) {
     $greeting = ucfirst($greeting);
     return "$greeting, $title $name!";
+  }
+
+  #[Route('POST', 'specie/{specie}/color/{color}')]
+  public function shuffledOrder(string $color, ServerRequestInterface $request, string $specie) {
+    return $request->getMethod() . " Hello, $color $specie!";
   }
 
   #[Route('GET', 'welcome/great/king')]

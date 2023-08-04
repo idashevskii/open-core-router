@@ -35,7 +35,7 @@ final class App {
     $injector->alias(RouterConfig::class, AppConfig::class);
     $injector->set(AppConfig::INJECT_CONTROLLER_SCAN_NS, $scanNs);
     $injector->set(AppConfig::INJECT_ROUTER_DATA_FILE,
-        sys_get_temp_dir() . '/' . strtolower(strtr(implode('_', $scanNs), '\\', '.')) . '.php');
+        sys_get_temp_dir() . '/_router_test_' . strtolower(strtr(implode('_', $scanNs), '\\', '.')) . '.php');
 
     return $injector->get(self::class);
   }

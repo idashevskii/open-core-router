@@ -112,9 +112,19 @@ final class RouterTest extends TestCase {
   }
 
   public function testStaticToDynamicBacktrace() {
+    $response = self::$app->handleRequest('GET', '/hello/welcome/great/king');
+    $this->assertEquals(200, $response->getStatusCode());
+    $this->assertEquals('Welcome, Great King!', (string) $response->getBody());
+
     $response = self::$app->handleRequest('GET', '/hello/welcome/noble/knight');
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertEquals('Welcome, noble knight!', (string) $response->getBody());
+  }
+
+  public function testShuffledParamOrder() {
+    $response = self::$app->handleRequest('POST', '/hello/specie/wolf/color/black');
+    $this->assertEquals(200, $response->getStatusCode());
+    $this->assertEquals('POST Hello, black wolf!', (string) $response->getBody());
   }
 
   public function testSimplifiedRouterResponse() {
