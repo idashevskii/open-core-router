@@ -16,12 +16,18 @@ namespace OpenCore;
 use ReflectionClass;
 use ReflectionAttribute;
 use ReflectionMethod;
+use ReflectionParameter;
 use OpenCore\Exceptions\NoControllersException;
 use OpenCore\Exceptions\InvalidParamTypeException;
 use OpenCore\Exceptions\InconsistentParamsException;
 use OpenCore\Exceptions\AmbiguousRouteException;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ResponseInterface;
 
 final class RouterCompiler {
+
+  private const SEGMENT_STATIC = 1;
+  private const SEGMENT_DYNAMIC = 2;
 
   public function __construct() {
     
@@ -55,7 +61,7 @@ final class RouterCompiler {
         break;
       }
       list($segmentType, $segmentArg) = array_shift($segments);
-      if ($segmentType === RouterParser::SEGMENT_STATIC) {
+      if ($segmentType === self::SEGMENT_STATIC) {
         $childNode = &$staticLink[$segmentArg];
       } else { // self::SEGMENT_DYNAMIC
         $childNode = &$dynamicLink;
@@ -69,20 +75,36 @@ final class RouterCompiler {
 
     $expectedDynamicSegments = [];
     foreach ($segmets as list($segmentType, $segmentArg)) {
-      if ($segmentType === RouterParser::SEGMENT_DYNAMIC) {
+      if ($segmentType === self::SEGMENT_DYNAMIC) {
         $expectedDynamicSegments[] = $segmentArg;
       }
     }
     $actualDynamicSegments = [];
     $segnemtParamIndexMap = array_flip($expectedDynamicSegments);
 
-    foreach (RouterParser::parseParams($rMethod) as list($paramName, $paramKind, $paramType)) {
+    foreach ($rMethod->getParameters() as $rParam) {
+      /* @var $rParam ReflectionParameter */
+      $paramType = ltrim((string) $rParam->getType(), '?'); // strip optionality marker;
+      if ($rParam->getAttributes(Body::class, ReflectionAttribute::IS_INSTANCEOF)) {
+        $paramKind = Router::KIND_BODY;
+      } else if (is_a($paramType, ServerRequestInterface::class, true)) {
+        $paramKind = Router::KIND_REQUEST;
+        $paramType = null;
+      } else if (is_a($paramType, ResponseInterface::class, true)) {
+        $paramKind = Router::KIND_RESPONSE;
+        $paramType = null;
+      } else if ($rParam->isOptional()) {
+        $paramKind = Router::KIND_QUERY;
+      } else {
+        $paramKind = Router::KIND_SEGMENT;
+      }
       $supportedParamTypes = match ($paramKind) {
         Router::KIND_BODY => ['array', 'string'],
         Router::KIND_QUERY => ['string', 'int', 'bool', 'float'],
         Router::KIND_SEGMENT => ['string', 'int'],
         default => null,
       };
+      $paramName = $rParam->name;
       if ($supportedParamTypes && !in_array($paramType, $supportedParamTypes)) {
         throw new InvalidParamTypeException(
                 "Type '$paramType' of param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' is not supported");
@@ -113,18 +135,18 @@ final class RouterCompiler {
 
   private function parseClass(string $class, int $classIndex) {
     $rClass = new ReflectionClass($class);
-    $controller = RouterParser::extractControllerAttr($rClass);
+    $controller = self::extractControllerAttr($rClass);
     if (!$controller) {
       return;
     }
     $commonAttrs = self::parseAttributes($rClass);
     foreach ($rClass->getMethods(ReflectionMethod::IS_PUBLIC) as $rMethod) {
-      $route = RouterParser::extractRouteAttr($rMethod);
+      $route = self::extractRouteAttr($rMethod);
       if (!$route) {
         continue;
       }
-      $path = RouterParser::makePath($controller, $route);
-      $segments = RouterParser::parsePath($path);
+      $path = self::makePath($controller, $route);
+      $segments = self::parsePath($path);
       $handler = [$classIndex, $rMethod->getName()];
       $paramsProps = $this->parseParams($segments, $rMethod, $handler, $path);
       $routeAttrs = array_merge($commonAttrs, self::parseAttributes($rMethod), $route->attributes ?? []);
@@ -151,7 +173,7 @@ final class RouterCompiler {
     }
     $resSegments = [];
     foreach ($segments as list($segmentType, $segmentArg)) {
-      if ($segmentType === RouterParser::SEGMENT_STATIC) {
+      if ($segmentType === self::SEGMENT_STATIC) {
         $resSegments[] = $segmentArg;
       } else {
         $resSegments[] = null;
@@ -196,6 +218,49 @@ final class RouterCompiler {
   private static function parseAttributes(ReflectionMethod|ReflectionClass $rMethod) {
     $rRouteAttrs = $rMethod->getAttributes(RouteAnnotation::class, ReflectionAttribute::IS_INSTANCEOF);
     return array_merge(...array_map(fn($rAttr) => $rAttr->newInstance()->getAttributes(), $rRouteAttrs));
+  }
+
+  public static function parsePath(string $path) {
+    $ret = [];
+    foreach (explode('/', $path) as $segment) {
+      if ($segment === '') {
+        continue;
+      }
+      $placeholder = self::matchPlaceholder($segment);
+      if ($placeholder) {
+        $ret[] = [self::SEGMENT_DYNAMIC, $placeholder];
+      } else {
+        $ret[] = [self::SEGMENT_STATIC, $segment];
+      }
+    }
+    return $ret;
+  }
+
+  private static function matchPlaceholder(string $str): ?string {
+    if (str_starts_with($str, '{') && str_ends_with($str, '}')) {
+      return substr($str, 1, strlen($str) - 2);
+    }
+    return null;
+  }
+
+  private static function extractControllerAttr(ReflectionClass $rClass): ?Controller {
+    $rCtrlAttrs = $rClass->getAttributes(Controller::class, ReflectionAttribute::IS_INSTANCEOF);
+    if (!$rCtrlAttrs) {
+      return null;
+    }
+    return $rCtrlAttrs[0]->newInstance();
+  }
+
+  private static function makePath(Controller $controller, Route $route): string {
+    return ($controller->prefix ? $controller->prefix . '/' : '') . $route->path;
+  }
+
+  private static function extractRouteAttr(ReflectionMethod $rMethod): ?Route {
+    $rRouteAttrs = $rMethod->getAttributes(Route::class);
+    if (!$rRouteAttrs) {
+      return null;
+    }
+    return $rRouteAttrs[0]->newInstance();
   }
 
 }
