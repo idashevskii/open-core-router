@@ -18,6 +18,9 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use OpenCore\Exceptions\RoutingException;
+use Psr\Http\Message\UriInterface;
+use Psr\Http\Message\UriFactoryInterface;
+use InvalidArgumentException;
 
 final class Router implements MiddlewareInterface {
 
@@ -30,9 +33,14 @@ final class Router implements MiddlewareInterface {
 
   private ?array $tree;
   private ?array $classes;
+  private ?array $handlers;
+  private ?array $namedHandlers;
 
-  public function __construct(RouterConfig $config) {
-    list($this->tree, $this->classes) = $config->storeCompiledData(function ()use ($config) {
+  public function __construct(
+      RouterConfig $config,
+      private UriFactoryInterface $uriFactoryInterface,
+  ) {
+    list($this->tree, $this->classes, $this->handlers, $this->namedHandlers) = $config->storeCompiledData(function ()use ($config) {
       $compiler = new RouterCompiler();
       foreach ($config->getControllerDirs() as $ns => $dir) {
         $compiler->scan($ns, $dir);
@@ -44,10 +52,10 @@ final class Router implements MiddlewareInterface {
   private function resolveUriHandlers(string $uri) {
     $segments = array_values(array_filter(explode('/', $uri), fn($s) => $s !== ''));
     $walk = function (array $node, $segmentIdx, $routeParams)use (&$walk, $segments) {
-      list($static, $dynamic, $handler) = $node;
+      list($static, $dynamic, $methodHandlers) = $node;
       if (!isset($segments[$segmentIdx])) { // all segments passed
-        if ($handler) {
-          return [$handler, $routeParams];
+        if ($methodHandlers) {
+          return [$methodHandlers, $routeParams];
         }
         return null; // not found
       }
@@ -85,15 +93,15 @@ final class Router implements MiddlewareInterface {
     if (!isset($methodHandlers[$httpMethod])) {
       throw new RoutingException(code: 405);
     }
-    list($classIndex, $controllerMethod, $paramsProps, $attrs) = $methodHandlers[$httpMethod];
+    list($classIndex, $controllerMethod, $paramsProps, $routeAttrs) = $this->handlers[$methodHandlers[$httpMethod]];
     $paramKinds = [];
     $paramTypes = [];
     $rawParamValues = [];
-    foreach ($paramsProps as list($paramKind, $routeKey, $paramType)) {
+    foreach ($paramsProps as list($paramKind, $paramType, $paramName, $segmentIndex)) {
       if ($paramKind === Router::KIND_SEGMENT) {
-        $paramValue = $segmentParams[$routeKey]; // must exist
+        $paramValue = $segmentParams[$segmentIndex]; // must exist
       } else if ($paramKind === Router::KIND_QUERY) {
-        $paramValue = isset($queryParams[$routeKey]) ? (string) $queryParams[$routeKey] : null;
+        $paramValue = isset($queryParams[$paramName]) ? (string) $queryParams[$paramName] : null;
       } else {
         $paramValue = null;
       }
@@ -101,12 +109,60 @@ final class Router implements MiddlewareInterface {
       $paramTypes[] = $paramType;
       $rawParamValues[] = $paramValue;
     }
-    $attrs[self::REQUEST_ATTRIBUTE] = new RouterOutput(
-        $this->classes[$classIndex], $controllerMethod, $paramKinds, $paramTypes, $rawParamValues);
-    foreach ($attrs as $key => $value) {
+    $routeAttrs[self::REQUEST_ATTRIBUTE] = [$this->classes[$classIndex], $controllerMethod, $paramKinds, $paramTypes, $rawParamValues];
+    foreach ($routeAttrs as $key => $value) {
       $request = $request->withAttribute($key, $value);
     }
     return $handler->handle($request);
+  }
+
+  public function getUri(): UriInterface {
+    
+  }
+
+  public function reverse(string $name, array $params = null): UriInterface {
+    if (!isset($this->namedHandlers[$name])) {
+      throw new InvalidArgumentException("Route $name is not defined");
+    }
+    list($handlerIdx, $resSegments) = $this->namedHandlers[$name];
+
+    list(,, $paramsProps) = $this->handlers[$handlerIdx];
+
+    $relToAbsSegmentIdx = [];
+    $relIdx = 0;
+    foreach ($resSegments as $i => $segmentVal) {
+      if ($segmentVal === null) {
+        $relToAbsSegmentIdx[$relIdx++] = $i;
+      }
+    }
+
+    $query = [];
+    $argIndex = 0;
+    foreach ($paramsProps as list($paramKind, $paramType, $paramName, $segmentIndex)) {
+      if ($paramKind !== Router::KIND_QUERY && $paramKind !== Router::KIND_SEGMENT) {
+        continue;
+      }
+      $value = $params[$argIndex++] ?? ($params[$paramName] ?? null);
+      if ($paramKind === Router::KIND_QUERY) {
+        if ($value === null) {
+          continue;
+        }
+        if ($paramType === 'bool') {
+          $value = $value ? 'true' : 'false';
+        }
+        $query[$paramName] = $value;
+      } else { // RouterMiddleware::KIND_SEGMENT
+        if ($value === null) {
+          throw new ErrorException("Param $paramName in route '$name' is required");
+        }
+        $resSegments[$relToAbsSegmentIdx[$segmentIndex]] = $value;
+      }
+    }
+    $ret = $this->uriFactoryInterface->createUri('/' . implode('/', $resSegments));
+    if ($query) {
+      $ret = $ret->withQuery(http_build_query($query));
+    }
+    return $ret;
   }
 
 }

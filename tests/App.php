@@ -22,6 +22,7 @@ use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Container\ContainerInterface;
+use Psr\Http\Message\UriFactoryInterface;
 use OpenCore\Uitls\ErrorHandlerMiddleware;
 
 final class App {
@@ -32,6 +33,7 @@ final class App {
     $injector->alias(StreamFactoryInterface::class, Psr17Factory::class);
     $injector->alias(ResponseFactoryInterface::class, Psr17Factory::class);
     $injector->alias(ServerRequestFactoryInterface::class, Psr17Factory::class);
+    $injector->alias(UriFactoryInterface::class, Psr17Factory::class);
     $injector->alias(RouterConfig::class, AppConfig::class);
     $injector->set(AppConfig::INJECT_CONTROLLER_SCAN_NS, $scanNs);
     $injector->set(AppConfig::INJECT_ROUTER_DATA_FILE,
@@ -58,6 +60,10 @@ final class App {
     }
   }
 
+  public function getUriByRoute(string $name, array $params=null){
+    return $this->routerMiddleware->reverse($name, $params);
+  }
+  
   public function handleRequest(string $method, string $uri,
       ?array $query = null, ?array $payload = null, ?string $payloadStr = null,
       bool $routerOnly = false): ResponseInterface {

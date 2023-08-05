@@ -30,6 +30,8 @@ final class RouterCompiler {
   // node: [staticSegments:{[value]:node}, dynamicSegmetns:[{param, node}], handlers:{[method]:{ctrl, fn, params}}]
   private array $tree = [];
   private array $classes = [];
+  private array $handlers = [];
+  private array $namedHandlers = [];
 
   private function stringifyCallable(array $handler) {
     list($classIndex, $method) = $handler;
@@ -37,22 +39,22 @@ final class RouterCompiler {
     return "$class::$method";
   }
 
-  private function insertHandlerToTree(string $httpMethod, array $segments, array $handler) {
+  private function insertHandlerToTree(string $httpMethod, array $segments, int $handlerIdx) {
 
     $node = &$this->tree;
     while (true) {
       if (!$node) {
         $node = [null, null, null];
       }
-      list(&$staticLink, &$dynamicLink, &$handlerLink) = $node;
+      list(&$staticLink, &$dynamicLink, &$methodHandlersLink) = $node;
       if (!$segments) {
-        if (isset($handlerLink[$httpMethod])) {
+        if (isset($methodHandlersLink[$httpMethod])) {
           throw new AmbiguousRouteException("Ambiguous route for " . implode(' and ', [
-                    $this->stringifyCallable($handler),
-                    $this->stringifyCallable($handlerLink[$httpMethod]),
+                    $this->stringifyCallable($this->handlers[$handlerIdx]),
+                    $this->stringifyCallable($this->handlers[$methodHandlersLink[$httpMethod]]),
           ]));
         }
-        $handlerLink[$httpMethod] = $handler;
+        $methodHandlersLink[$httpMethod] = $handlerIdx;
         break;
       }
       list($segmentType, $segmentArg) = array_shift($segments);
@@ -90,16 +92,15 @@ final class RouterCompiler {
       }
       if ($paramKind === Router::KIND_SEGMENT) {
         $actualDynamicSegments[] = $paramName;
-        $key = $segnemtParamIndexMap[$paramName] ?? null;
-      } else if ($paramKind === Router::KIND_QUERY) {
-        $key = $paramName;
+        $segmentIndex = $segnemtParamIndexMap[$paramName] ?? null;
       } else {
-        $key = null;
+        $segmentIndex = null;
       }
       $ret[] = [
         $paramKind,
-        $key,
         $paramType,
+        $paramName,
+        $segmentIndex,
       ];
     }
     sort($expectedDynamicSegments);
@@ -128,10 +129,27 @@ final class RouterCompiler {
       $path = RouterParser::makePath($controller, $route);
       $segments = RouterParser::parsePath($path);
       $handler = [$classIndex, $rMethod->getName()];
-      $params = $this->parseParams($segments, $rMethod, $handler, $path);
+      $paramsProps = $this->parseParams($segments, $rMethod, $handler, $path);
       $routeAttrs = array_merge($commonAttrs, self::parseAttributes($rMethod), $route->attributes ?? []);
-      $this->insertHandlerToTree($route->method, $segments, [...$handler, $params, $routeAttrs]);
+      $this->handlers[] = [...$handler, $paramsProps, $routeAttrs];
+      $handlerIdx = count($this->handlers) - 1;
+      if ($route->name) {
+        $this->insertReverseRoute($route->name, $handlerIdx, $segments);
+      }
+      $this->insertHandlerToTree($route->method, $segments, $handlerIdx);
     }
+  }
+
+  private function insertReverseRoute(string $name, int $handlerIdx, array $segments) {
+    $resSegments = [];
+    foreach ($segments as list($segmentType, $segmentArg)) {
+      if ($segmentType === RouterParser::SEGMENT_STATIC) {
+        $resSegments[] = $segmentArg;
+      } else {
+        $resSegments[] = null;
+      }
+    }
+    $this->namedHandlers[$name] = [$handlerIdx, $resSegments];
   }
 
   public function scan(string $namespace, string $dir) {
@@ -164,7 +182,7 @@ final class RouterCompiler {
     if (!$this->classes) {
       throw new NoControllersException();
     }
-    return [$this->tree, $this->classes];
+    return [$this->tree, $this->classes, $this->handlers, $this->namedHandlers];
   }
 
   private static function parseAttributes(ReflectionMethod|ReflectionClass $rMethod) {

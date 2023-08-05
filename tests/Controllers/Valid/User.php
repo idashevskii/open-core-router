@@ -31,7 +31,7 @@ class User {
     2 => ['id' => 2, 'name' => 'userB', 'active' => true, 'roles' => ['a', 'd']],
   ];
 
-  #[Route('GET', '')]
+  #[Route('GET', '', name: 'getUsers')]
   public function getUsers(ServerRequestInterface $req, ?string $filterKey = null, ?string $filterValue = null, ?bool $active = null) {
     $ret = $this->users;
     if ($filterKey === 'role') {
@@ -43,7 +43,7 @@ class User {
     return array_values($ret);
   }
 
-  #[Route('POST', '')]
+  #[Route('POST', '', name: 'addUser')]
   public function addUser(ServerRequestInterface $req, #[Body] array $user) {
     if (!isset($user['id'])) {
       return ControllerResponse::fromStatus(418);
@@ -80,7 +80,7 @@ class User {
     return ControllerResponse::fromStatus(204);
   }
 
-  #[Route('PATCH', '{id}')]
+  #[Route('PATCH', '{id}', name: 'userEditUser')]
   public function editUser(int $id, ServerRequestInterface $req, #[Body] array $data, bool $optional = null) {
     if (isset($data['name'])) {
       $this->users[$id]['name'] = $data['name'];
@@ -91,7 +91,7 @@ class User {
     return $this->users[$id];
   }
 
-  #[Route('GET', '{id}/roles')]
+  #[Route('GET', '{id}/roles', name: 'getUserRoles')]
   public function getUserRoles(ServerRequestInterface $req, int $id) {
     return $this->users[$id]['roles'];
   }

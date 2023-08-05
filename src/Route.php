@@ -22,6 +22,7 @@ final class Route {
       public string $method,
       public string $path,
       public ?array $attributes = null,
+      public ?string $name = null,
   ) {
     
   }

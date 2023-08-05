@@ -79,9 +79,11 @@ final class RouterParser {
       } else if (is_a($paramType, ServerRequestInterface::class, true)) {
         $paramKind = Router::KIND_REQUEST;
         $paramType = null;
+        $paramName = null;
       } else if (is_a($paramType, ResponseInterface::class, true)) {
         $paramKind = Router::KIND_RESPONSE;
         $paramType = null;
+        $paramName = null;
       } else if ($rParam->isOptional()) {
         $paramKind = Router::KIND_QUERY;
       } else {

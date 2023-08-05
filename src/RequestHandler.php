@@ -37,14 +37,11 @@ final class RequestHandler implements RequestHandlerInterface {
   }
 
   public function handle(ServerRequestInterface $request): ResponseInterface {
-    $payload = $request->getAttribute(Router::REQUEST_ATTRIBUTE);
-    /* @var $payload RouterOutput */
-    $paramRawValues = $payload->getParamRawValues();
-    $paramTypes = $payload->getParamTypes();
+    list($controllerClass, $controllerMethod, $paramKinds, $paramTypes, $rawParamValues) = $request->getAttribute(Router::REQUEST_ATTRIBUTE);
     $callMethodParams = [];
-    foreach ($payload->getParamKinds() as $i => $kind) {
+    foreach ($paramKinds as $i => $kind) {
       if ($kind === Router::KIND_SEGMENT || $kind === Router::KIND_QUERY) {
-        $rawValue = $paramRawValues[$i];
+        $rawValue = $rawParamValues[$i];
         if ($rawValue === null) {
           $value = null; // optional param not specified, nothing to convert
         } else {
@@ -79,8 +76,8 @@ final class RequestHandler implements RequestHandlerInterface {
       }
       $callMethodParams[] = $value;
     }
-    $controller = $this->controllerResolver->get($payload->getControllerClass());
-    $res = call_user_func_array([$controller, $payload->getControllerMethod()], $callMethodParams);
+    $controller = $this->controllerResolver->get($controllerClass);
+    $res = call_user_func_array([$controller, $controllerMethod], $callMethodParams);
     if ($res instanceof ResponseInterface) {
       return $res;
     }

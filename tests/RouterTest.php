@@ -228,4 +228,35 @@ final class RouterTest extends TestCase {
     $this->assertEquals($msg, (string) $response->getBody());
   }
 
+  public function testReverseRouteStaticRoute() {
+    $url = self::$app->getUriByRoute('addUser', ['hello'=>'world']);
+    $this->assertEquals('/user', (string) $url);
+  }
+
+  public function testReverseRouteSegmentParams() {
+    $id = 999;
+    $url = self::$app->getUriByRoute('getUserRoles', [$id]);
+    $this->assertEquals("/user/$id/roles", (string) $url);
+  }
+
+  public function testReverseRouteQueryParams() {
+    $filterKey = 'some-key';
+    $filterValue = 'some-value';
+
+    $url = self::$app->getUriByRoute('getUsers', ['filterKey'=>$filterKey, 'filterValue'=>$filterValue, 'active'=>true]);
+    $this->assertEquals("/user?filterKey=$filterKey&filterValue=$filterValue&active=true", (string) $url);
+
+    $url = self::$app->getUriByRoute('getUsers', [$filterKey, $filterValue, 'active'=>false]);
+    $this->assertEquals("/user?filterKey=$filterKey&filterValue=$filterValue&active=false", (string) $url);
+  }
+
+  public function testReverseRouteBodyParam() {
+    $id = 999;
+    $url = self::$app->getUriByRoute('userEditUser', [$id]);
+    $this->assertEquals("/user/$id", (string) $url);
+
+    $url = self::$app->getUriByRoute('userEditUser', [$id, 'body'=>[]]);
+    $this->assertEquals("/user/$id", (string) $url);
+  }
+
 }
