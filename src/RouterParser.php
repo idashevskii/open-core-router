@@ -72,24 +72,21 @@ final class RouterParser {
     $ret = [];
     foreach ($rMethod->getParameters() as $rParam) {
       /* @var $rParam ReflectionParameter */
-      $paramName = $rParam->name;
       $paramType = ltrim((string) $rParam->getType(), '?'); // strip optionality marker;
       if ($rParam->getAttributes(Body::class, ReflectionAttribute::IS_INSTANCEOF)) {
         $paramKind = Router::KIND_BODY;
       } else if (is_a($paramType, ServerRequestInterface::class, true)) {
         $paramKind = Router::KIND_REQUEST;
         $paramType = null;
-        $paramName = null;
       } else if (is_a($paramType, ResponseInterface::class, true)) {
         $paramKind = Router::KIND_RESPONSE;
         $paramType = null;
-        $paramName = null;
       } else if ($rParam->isOptional()) {
         $paramKind = Router::KIND_QUERY;
       } else {
         $paramKind = Router::KIND_SEGMENT;
       }
-      $ret[] = [$paramName, $paramKind, $paramType];
+      $ret[] = [$rParam->name, $paramKind, $paramType];
     }
     return $ret;
   }

@@ -49,10 +49,7 @@ final class RouterCompiler {
       list(&$staticLink, &$dynamicLink, &$methodHandlersLink) = $node;
       if (!$segments) {
         if (isset($methodHandlersLink[$httpMethod])) {
-          throw new AmbiguousRouteException("Ambiguous route for " . implode(' and ', [
-                    $this->stringifyCallable($this->handlers[$handlerIdx]),
-                    $this->stringifyCallable($this->handlers[$methodHandlersLink[$httpMethod]]),
-          ]));
+          $this->throwAmbiguousRouteException($handlerIdx, $methodHandlersLink[$httpMethod]);
         }
         $methodHandlersLink[$httpMethod] = $handlerIdx;
         break;
@@ -131,16 +128,27 @@ final class RouterCompiler {
       $handler = [$classIndex, $rMethod->getName()];
       $paramsProps = $this->parseParams($segments, $rMethod, $handler, $path);
       $routeAttrs = array_merge($commonAttrs, self::parseAttributes($rMethod), $route->attributes ?? []);
-      $this->handlers[] = [...$handler, $paramsProps, $routeAttrs];
+      $routeName = $route->name;
+      $this->handlers[] = [...$handler, $paramsProps, $routeAttrs, $routeName];
       $handlerIdx = count($this->handlers) - 1;
-      if ($route->name) {
-        $this->insertReverseRoute($route->name, $handlerIdx, $segments);
+      if ($routeName) {
+        $this->insertReverseRoute($routeName, $handlerIdx, $segments);
       }
       $this->insertHandlerToTree($route->method, $segments, $handlerIdx);
     }
   }
 
+  private function throwAmbiguousRouteException(int $handlerIdx1, int $handlerIdx2) {
+    throw new AmbiguousRouteException("Ambiguous route for " . implode(' and ', [
+              $this->stringifyCallable($this->handlers[$handlerIdx1]),
+              $this->stringifyCallable($this->handlers[$handlerIdx2]),
+    ]));
+  }
+
   private function insertReverseRoute(string $name, int $handlerIdx, array $segments) {
+    if (isset($this->namedHandlers[$name])) {
+      $this->throwAmbiguousRouteException($handlerIdx, $this->namedHandlers[$name][0]);
+    }
     $resSegments = [];
     foreach ($segments as list($segmentType, $segmentArg)) {
       if ($segmentType === RouterParser::SEGMENT_STATIC) {

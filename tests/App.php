@@ -60,10 +60,10 @@ final class App {
     }
   }
 
-  public function getUriByRoute(string $name, array $params=null){
-    return $this->routerMiddleware->reverse($name, $params);
+  public function getRouter(): Router {
+    return $this->routerMiddleware;
   }
-  
+
   public function handleRequest(string $method, string $uri,
       ?array $query = null, ?array $payload = null, ?string $payloadStr = null,
       bool $routerOnly = false): ResponseInterface {

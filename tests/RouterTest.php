@@ -85,6 +85,11 @@ final class RouterTest extends TestCase {
     $this->makeApp(['DuplicatingStatic'])->handleRequest('DELETE', '/any/request');
   }
 
+  public function testDuplicatingRouteNames() {
+    $this->expectException(AmbiguousRouteException::class);
+    $this->makeApp(['DuplicatingNames'])->handleRequest('DELETE', '/any/request');
+  }
+
   public function testAmbiguousDynamicSegments() {
     $this->expectException(AmbiguousRouteException::class);
     $this->makeApp(['AmbiguousDynamic'])->handleRequest('DELETE', '/any/request');
@@ -229,13 +234,13 @@ final class RouterTest extends TestCase {
   }
 
   public function testReverseRouteStaticRoute() {
-    $url = self::$app->getUriByRoute('addUser', ['hello'=>'world']);
+    $url = self::$app->getRouter()->reverse('addUser', ['hello' => 'world']);
     $this->assertEquals('/user', (string) $url);
   }
 
   public function testReverseRouteSegmentParams() {
     $id = 999;
-    $url = self::$app->getUriByRoute('getUserRoles', [$id]);
+    $url = self::$app->getRouter()->reverse('getUserRoles', ['id' => $id]);
     $this->assertEquals("/user/$id/roles", (string) $url);
   }
 
@@ -243,20 +248,33 @@ final class RouterTest extends TestCase {
     $filterKey = 'some-key';
     $filterValue = 'some-value';
 
-    $url = self::$app->getUriByRoute('getUsers', ['filterKey'=>$filterKey, 'filterValue'=>$filterValue, 'active'=>true]);
+    $url = self::$app->getRouter()->reverse('getUsers', ['filterKey' => $filterKey, 'filterValue' => $filterValue, 'active' => true]);
     $this->assertEquals("/user?filterKey=$filterKey&filterValue=$filterValue&active=true", (string) $url);
 
-    $url = self::$app->getUriByRoute('getUsers', [$filterKey, $filterValue, 'active'=>false]);
+    $url = self::$app->getRouter()->reverse('getUsers', ['filterKey' => $filterKey, 'filterValue' => $filterValue, 'active' => false]);
     $this->assertEquals("/user?filterKey=$filterKey&filterValue=$filterValue&active=false", (string) $url);
   }
 
   public function testReverseRouteBodyParam() {
     $id = 999;
-    $url = self::$app->getUriByRoute('userEditUser', [$id]);
+    $url = self::$app->getRouter()->reverse('userEditUser', ['id' => $id]);
     $this->assertEquals("/user/$id", (string) $url);
 
-    $url = self::$app->getUriByRoute('userEditUser', [$id, 'body'=>[]]);
+    $url = self::$app->getRouter()->reverse('userEditUser', ['id' => $id, 'body' => []]);
     $this->assertEquals("/user/$id", (string) $url);
+  }
+
+  public function testGettingCurrentRouteLocation() {
+    $id = 123;
+    $fullInfo = true;
+    $attrFilter = 'some-filter';
+
+    self::$app->handleRequest('GET', "/user/$id", query: ['fullInfo' => (string) $fullInfo, 'attrFilter' => $attrFilter]);
+    // $req param must be ignored, order of params must be normalized
+    $expected = self::$app->getRouter()->createLocation('getUser', ['req' => null, 'fullInfo' => $fullInfo, 'id' => $id, 'attrFilter' => $attrFilter]);
+    $actual = self::$app->getRouter()->currentLocation();
+
+    $this->assertEquals((string) $expected, (string) $actual);
   }
 
 }

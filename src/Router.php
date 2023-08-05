@@ -20,7 +20,10 @@ use Psr\Http\Message\ResponseInterface;
 use OpenCore\Exceptions\RoutingException;
 use Psr\Http\Message\UriInterface;
 use Psr\Http\Message\UriFactoryInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
 use InvalidArgumentException;
+use JsonException;
+use ErrorException;
 
 final class Router implements MiddlewareInterface {
 
@@ -35,9 +38,11 @@ final class Router implements MiddlewareInterface {
   private ?array $classes;
   private ?array $handlers;
   private ?array $namedHandlers;
+  private ?array $currentRouteData = null;
 
   public function __construct(
       RouterConfig $config,
+      private ResponseFactoryInterface $responseFactory,
       private UriFactoryInterface $uriFactoryInterface,
   ) {
     list($this->tree, $this->classes, $this->handlers, $this->namedHandlers) = $config->storeCompiledData(function ()use ($config) {
@@ -93,31 +98,49 @@ final class Router implements MiddlewareInterface {
     if (!isset($methodHandlers[$httpMethod])) {
       throw new RoutingException(code: 405);
     }
-    list($classIndex, $controllerMethod, $paramsProps, $routeAttrs) = $this->handlers[$methodHandlers[$httpMethod]];
-    $paramKinds = [];
-    $paramTypes = [];
-    $rawParamValues = [];
+    list($classIndex, $controllerMethod, $paramsProps, $routeAttrs, $routeName) = $this->handlers[$methodHandlers[$httpMethod]];
+    $paramMap = [];
     foreach ($paramsProps as list($paramKind, $paramType, $paramName, $segmentIndex)) {
-      if ($paramKind === Router::KIND_SEGMENT) {
-        $paramValue = $segmentParams[$segmentIndex]; // must exist
-      } else if ($paramKind === Router::KIND_QUERY) {
-        $paramValue = isset($queryParams[$paramName]) ? (string) $queryParams[$paramName] : null;
-      } else {
-        $paramValue = null;
-      }
-      $paramKinds[] = $paramKind;
-      $paramTypes[] = $paramType;
-      $rawParamValues[] = $paramValue;
+      $paramMap[$paramName] = match ($paramKind) {
+        self::KIND_SEGMENT => self::parseParam($paramType, $segmentParams[$segmentIndex], $paramName),
+        self::KIND_BODY => self::parseParam($paramType, (string) $request->getBody(), $paramName),
+        self::KIND_REQUEST => $request,
+        self::KIND_RESPONSE => $this->responseFactory->createResponse(),
+        self::KIND_QUERY => isset($queryParams[$paramName]) ? self::parseParam($paramType, $queryParams[$paramName], $paramName) : null,
+      };
     }
-    $routeAttrs[self::REQUEST_ATTRIBUTE] = [$this->classes[$classIndex], $controllerMethod, $paramKinds, $paramTypes, $rawParamValues];
+    if ($routeName) {
+      $this->currentRouteData = [$routeName, $paramMap];
+    }
+    $routeAttrs[self::REQUEST_ATTRIBUTE] = [$this->classes[$classIndex], $controllerMethod, $paramMap];
     foreach ($routeAttrs as $key => $value) {
       $request = $request->withAttribute($key, $value);
     }
     return $handler->handle($request);
   }
 
-  public function getUri(): UriInterface {
-    
+  public function currentLocation(): RouteLocation {
+    if (!$this->currentRouteData) {
+      throw ErrorException('Current route is not named');
+    }
+    list($routeName, $paramMap) = $this->currentRouteData;
+    return $this->createLocation($routeName, $paramMap);
+  }
+
+  public function createLocation(string $name, array $params = null) {
+    $normalizedParams = [];
+    list($handlerIdx) = $this->namedHandlers[$name];
+    list(,, $paramsProps) = $this->handlers[$handlerIdx];
+    foreach ($paramsProps as list($paramKind,, $paramName,)) {
+      if ($paramKind === self::KIND_SEGMENT || $paramKind === self::KIND_QUERY) {
+        $normalizedParams[$paramName] = $params[$paramName];
+      }
+    }
+    return new RouteLocation($name, $normalizedParams);
+  }
+
+  public function reverseLocation(RouteLocation $location): UriInterface {
+    return $this->reverse($location->name, $location->params);
   }
 
   public function reverse(string $name, array $params = null): UriInterface {
@@ -137,13 +160,12 @@ final class Router implements MiddlewareInterface {
     }
 
     $query = [];
-    $argIndex = 0;
     foreach ($paramsProps as list($paramKind, $paramType, $paramName, $segmentIndex)) {
-      if ($paramKind !== Router::KIND_QUERY && $paramKind !== Router::KIND_SEGMENT) {
+      if ($paramKind !== self::KIND_QUERY && $paramKind !== self::KIND_SEGMENT) {
         continue;
       }
-      $value = $params[$argIndex++] ?? ($params[$paramName] ?? null);
-      if ($paramKind === Router::KIND_QUERY) {
+      $value = $params[$paramName] ?? null;
+      if ($paramKind === self::KIND_QUERY) {
         if ($value === null) {
           continue;
         }
@@ -163,6 +185,29 @@ final class Router implements MiddlewareInterface {
       $ret = $ret->withQuery(http_build_query($query));
     }
     return $ret;
+  }
+
+  private static function parseParam(string $type, string $value, string $name) {
+    return match ($type) {
+      'string' => $value,
+      'int' => (int) $value,
+      'float' => (float) $value,
+      'bool' => match ($value) {
+        'true', '1' => true,
+        'false', '0' => false,
+        default => throw new RoutingException("Param '$name' has invalid boolean value", code: 400),
+      },
+      'array' => self::parseJson($value),
+      default => throw new ErrorException("Param '$name' has invalid type '$type'"), // should be checked in compile step
+    };
+  }
+
+  private static function parseJson(string $json) {
+    try {
+      return json_decode($json, flags: JSON_THROW_ON_ERROR | JSON_OBJECT_AS_ARRAY);
+    } catch (JsonException $ex) {
+      throw new RoutingException('Body parse error', code: 400, previous: $ex);
+    }
   }
 
 }

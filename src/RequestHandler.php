@@ -19,14 +19,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Container\ContainerInterface;
-use OpenCore\Exceptions\RoutingException;
 use Psr\Http\Message\StreamInterface;
-use JsonException;
 use ErrorException;
 
 final class RequestHandler implements RequestHandlerInterface {
-
-  public const REQUEST_ATTRIBUTE = '_executorPayload_';
 
   public function __construct(
       private StreamFactoryInterface $streamFactory,
@@ -37,45 +33,8 @@ final class RequestHandler implements RequestHandlerInterface {
   }
 
   public function handle(ServerRequestInterface $request): ResponseInterface {
-    list($controllerClass, $controllerMethod, $paramKinds, $paramTypes, $rawParamValues) = $request->getAttribute(Router::REQUEST_ATTRIBUTE);
-    $callMethodParams = [];
-    foreach ($paramKinds as $i => $kind) {
-      if ($kind === Router::KIND_SEGMENT || $kind === Router::KIND_QUERY) {
-        $rawValue = $rawParamValues[$i];
-        if ($rawValue === null) {
-          $value = null; // optional param not specified, nothing to convert
-        } else {
-          $value = match ($paramTypes[$i]) {
-            'string' => $rawValue,
-            'int' => (int) $rawValue,
-            'float' => (float) $rawValue,
-            'bool' => match ($rawValue) {
-              'true', '1' => true,
-              'false', '0' => false,
-              default => throw new RoutingException("Param #$i has invalid boolean value", code: 400),
-            },
-            default => throw new ErrorException('Invalid param type'), // should be checked in compile step
-          };
-        }
-      } else if ($kind === Router::KIND_BODY) {
-        $rawValue = (string) $request->getBody();
-        if (!$rawValue) {
-          throw new RoutingException('Body not provided', code: 400);
-        }
-        $value = match ($paramTypes[$i]) {
-          'string' => $rawValue,
-          'array' => self::parseJsonBody($rawValue),
-          default => throw new ErrorException('Invalid body type'), // should be prevented in compile step
-        };
-      } else if ($kind === Router::KIND_REQUEST) {
-        $value = $request;
-      } else if ($kind === Router::KIND_RESPONSE) {
-        $value = $this->responseFactory->createResponse();
-      } else {
-        throw new ErrorException("Unknown param kind '$kind'");
-      }
-      $callMethodParams[] = $value;
-    }
+    list($controllerClass, $controllerMethod, $callMethodParams) = $request->getAttribute(Router::REQUEST_ATTRIBUTE);
+
     $controller = $this->controllerResolver->get($controllerClass);
     $res = call_user_func_array([$controller, $controllerMethod], $callMethodParams);
     if ($res instanceof ResponseInterface) {
@@ -111,14 +70,6 @@ final class RequestHandler implements RequestHandlerInterface {
       $response = $response->withHeader($headerName, $headerValue);
     }
     return $response;
-  }
-
-  private static function parseJsonBody(string $json) {
-    try {
-      return json_decode($json, flags: JSON_THROW_ON_ERROR | JSON_OBJECT_AS_ARRAY);
-    } catch (JsonException $ex) {
-      throw new RoutingException('Body parse error', code: 400, previous: $ex);
-    }
   }
 
   private static function stringifyJsonBody(mixed $data) {
