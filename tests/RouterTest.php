@@ -21,6 +21,7 @@ use OpenCore\Exceptions\{
   InvalidParamTypeException,
 };
 use Psr\Http\Message\ResponseInterface;
+use LogicException;
 
 final class RouterTest extends TestCase {
 
@@ -275,6 +276,20 @@ final class RouterTest extends TestCase {
     $actual = self::$app->getRouter()->currentLocation();
 
     $this->assertEquals((string) $expected, (string) $actual);
+  }
+
+  public function testResolvingCurrentLocation() {
+    self::$app->handleRequest('GET', '/user');
+    // $req param must be ignored, order of params must be normalized
+    $actual = self::$app->getRouter()->reverseLocation(self::$app->getRouter()->currentLocation());
+
+    $this->assertEquals('/user', (string) $actual);
+  }
+
+  public function testResolvingUnnamedLocation() {
+    $this->expectException(LogicException::class);
+    self::$app->handleRequest('GET', '/hello/noop');
+    self::$app->getRouter()->currentLocation();
   }
 
 }

@@ -55,7 +55,7 @@ class HelloCtrl {
     return "Welcome, Great King!";
   }
 
-  #[Route('GET', 'noop')]
+  #[Route('GET', 'noop', name: null)]
   public function noop() {
     
   }

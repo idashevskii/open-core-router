@@ -18,8 +18,8 @@ class RouteLocation {
   private ?string $hash = null;
 
   public function __construct(
-      private readonly string $name,
-      private readonly ?array $params = null,
+      public readonly string $name,
+      public readonly ?array $params = null,
   ) {
     
   }

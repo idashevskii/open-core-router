@@ -23,7 +23,7 @@ use Psr\Http\Message\UriFactoryInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use InvalidArgumentException;
 use JsonException;
-use ErrorException;
+use LogicException;
 
 final class Router implements MiddlewareInterface {
 
@@ -121,7 +121,7 @@ final class Router implements MiddlewareInterface {
 
   public function currentLocation(): RouteLocation {
     if (!$this->currentRouteData) {
-      throw ErrorException('Current route is not named');
+      throw new LogicException('Current route is not named');
     }
     list($routeName, $paramMap) = $this->currentRouteData;
     return $this->createLocation($routeName, $paramMap);
@@ -175,7 +175,7 @@ final class Router implements MiddlewareInterface {
         $query[$paramName] = $value;
       } else { // RouterMiddleware::KIND_SEGMENT
         if ($value === null) {
-          throw new ErrorException("Param $paramName in route '$name' is required");
+          throw new InvalidArgumentException("Param $paramName in route '$name' is required");
         }
         $resSegments[$relToAbsSegmentIdx[$segmentIndex]] = $value;
       }
@@ -198,7 +198,6 @@ final class Router implements MiddlewareInterface {
         default => throw new RoutingException("Param '$name' has invalid boolean value", code: 400),
       },
       'array' => self::parseJson($value),
-      default => throw new ErrorException("Param '$name' has invalid type '$type'"), // should be checked in compile step
     };
   }
 
