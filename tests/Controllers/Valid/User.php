@@ -64,7 +64,7 @@ class User {
   }
 
   #[Route('GET', '{id}', name: 'getUser')]
-  public function getUser(int $id, ServerRequestInterface $req, bool $fullInfo = null, string $attrFilter = null) {
+  public function getUser(int $id, ServerRequestInterface $req, bool $fullInfo = null, string $attrFilter = null, int $opt=null) {
     if (!isset($this->users[$id])) {
       return ControllerResponse::fromStatus(404);
     }

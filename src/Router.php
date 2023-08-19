@@ -133,7 +133,7 @@ final class Router implements MiddlewareInterface {
     list(,, $paramsProps) = $this->handlers[$handlerIdx];
     foreach ($paramsProps as list($paramKind,, $paramName,)) {
       if ($paramKind === self::KIND_SEGMENT || $paramKind === self::KIND_QUERY) {
-        $normalizedParams[$paramName] = $params[$paramName];
+        $normalizedParams[$paramName] = $params[$paramName] ?? null;
       }
     }
     return new RouteLocation($name, $normalizedParams);
