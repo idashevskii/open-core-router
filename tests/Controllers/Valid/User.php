@@ -40,7 +40,7 @@ class User {
     if ($active !== null) {
       $ret = array_filter($ret, fn($u) => $u['active'] === $active);
     }
-    return array_values($ret);
+    return ControllerResponse::fromBody(array_values($ret)); // should result in 200 status by default
   }
 
   #[Route('POST', '', name: 'addUser')]
@@ -64,7 +64,7 @@ class User {
   }
 
   #[Route('GET', '{id}', name: 'getUser')]
-  public function getUser(int $id, ServerRequestInterface $req, bool $fullInfo = null, string $attrFilter = null, int $opt=null) {
+  public function getUser(int $id, ServerRequestInterface $req, bool $fullInfo = null, string $attrFilter = null, int $opt = null) {
     if (!isset($this->users[$id])) {
       return ControllerResponse::fromStatus(404);
     }

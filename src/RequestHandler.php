@@ -24,6 +24,8 @@ use ErrorException;
 
 final class RequestHandler implements RequestHandlerInterface {
 
+  private const DEFAULT_STATUS = 200;
+
   public function __construct(
       private StreamFactoryInterface $streamFactory,
       private ResponseFactoryInterface $responseFactory,
@@ -41,11 +43,11 @@ final class RequestHandler implements RequestHandlerInterface {
       return $res;
     }
     if ($res instanceof ControllerResponse) {
-      $status = $res->getStatus();
+      $status = $res->getStatus() ?? self::DEFAULT_STATUS;
       $headers = $res->getHeaders();
       $data = $res->getBody();
     } else {
-      $status = 200;
+      $status = self::DEFAULT_STATUS;
       $headers = [];
       $data = $res;
     }
