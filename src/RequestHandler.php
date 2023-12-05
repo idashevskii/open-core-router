@@ -65,7 +65,9 @@ final class RequestHandler implements RequestHandlerInterface {
       } else {
         throw new ErrorException('Response type ' . gettype($data) . ' not supported');
       }
-      $headers['Content-Type'] = $contentType;
+      if (!isset($headers['Content-Type'])) {
+        $headers['Content-Type'] = $contentType;
+      }
       $response = $response->withBody($body);
     }
     foreach ($headers as $headerName => $headerValue) {
