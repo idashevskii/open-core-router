@@ -287,9 +287,9 @@ final class RouterTest extends TestCase {
   }
 
   public function testResolvingUnnamedLocation() {
-    $this->expectException(LogicException::class);
     self::$app->handleRequest('GET', '/hello/noop');
-    self::$app->getRouter()->currentLocation();
+    $actual = self::$app->getRouter()->currentLocation();
+    $this->assertNull($actual);
   }
 
 }

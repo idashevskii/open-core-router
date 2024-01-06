@@ -119,9 +119,12 @@ final class Router implements MiddlewareInterface {
     return $handler->handle($request);
   }
 
-  public function currentLocation(): RouteLocation {
+  /**
+   * @return RouteLocation|null Returns `null` if current route has no `name`
+   */
+  public function currentLocation(): ?RouteLocation {
     if (!$this->currentRouteData) {
-      throw new LogicException('Current route is not named');
+      return null;
     }
     list($routeName, $paramMap) = $this->currentRouteData;
     return $this->createLocation($routeName, $paramMap);
