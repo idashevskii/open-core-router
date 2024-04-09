@@ -11,19 +11,20 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore;
+namespace OpenCore\Router;
 
 use Psr\Http\Message\ResponseInterface;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Relay\Relay;
-use OpenCore\Uitls\EchoAttributesMiddleware;
-use OpenCore\Injector;
+use OpenCore\Router\Uitls\EchoAttributesMiddleware;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\UriFactoryInterface;
-use OpenCore\Uitls\ErrorHandlerMiddleware;
+use OpenCore\Router\Uitls\ErrorHandlerMiddleware;
+use OpenCore\Injector;
+use OpenCore\Inject;
 
 final class App {
 

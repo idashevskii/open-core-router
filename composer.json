@@ -8,12 +8,12 @@
   },
   "autoload": {
     "psr-4": {
-      "OpenCore\\": "src/"
+      "OpenCore\\Router\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "OpenCore\\": "tests/"
+      "OpenCore\\Router\\": "tests/"
     }
   },
   "provide": {

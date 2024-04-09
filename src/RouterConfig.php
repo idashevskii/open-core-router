@@ -11,7 +11,7 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore;
+namespace OpenCore\Router;
 
 use Closure;
 
@@ -29,4 +29,9 @@ interface RouterConfig {
    * @return array
    */
   function storeCompiledData(Closure $dataProvider): array;
+
+  /**
+   * Converts string value to required type. It could be built-in types as well as class names
+   */
+  function deserialize(string $type, string $value): mixed;
 }

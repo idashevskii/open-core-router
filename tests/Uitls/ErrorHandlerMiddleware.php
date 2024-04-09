@@ -11,13 +11,13 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore\Uitls;
+namespace OpenCore\Router\Uitls;
 
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Message\ResponseInterface;
-use OpenCore\Exceptions\RoutingException;
+use OpenCore\Router\Exceptions\RoutingException;
 use Psr\Http\Message\ResponseFactoryInterface;
 
 final class ErrorHandlerMiddleware implements MiddlewareInterface {

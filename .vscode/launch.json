@@ -1,0 +1,38 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug All Tests",
+            "type": "php",
+            "request": "launch",
+            "program": "${workspaceFolder}/vendor/bin/phpunit",
+            "args": ["./tests"],
+            "cwd": "${workspaceRoot}",
+            "externalConsole": false,
+            "port": 9003
+        },
+        {
+            "name": "Debug Current Test",
+            "type": "php",
+            "request": "launch",
+            "program": "${workspaceFolder}/vendor/bin/phpunit",
+            "args": ["${file}"],
+            "cwd": "${workspaceRoot}",
+            "externalConsole": false,
+            "port": 9003
+        },
+        {
+            "name": "Debug Custom Test",
+            "type": "php",
+            "request": "launch",
+            "program": "${workspaceFolder}/vendor/bin/phpunit",
+            "args": ["--filter", "testAmbiguousDynamicSegments", "./tests"],
+            "cwd": "${workspaceRoot}",
+            "externalConsole": false,
+            "port": 9003
+        }
+    ]
+}

@@ -11,14 +11,14 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore\Controllers\Valid;
+namespace OpenCore\Router\Controllers\Valid;
 
-use OpenCore\Controller;
-use OpenCore\Route;
-use OpenCore\RouteAnnotations\Auth;
-use OpenCore\RouteAnnotations\CtrlCommon;
-use OpenCore\RouteAnnotations\NoCsrf;
-use OpenCore\Body;
+use OpenCore\Router\Controller;
+use OpenCore\Router\Route;
+use OpenCore\Router\RouteAnnotations\Auth;
+use OpenCore\Router\RouteAnnotations\CtrlCommon;
+use OpenCore\Router\RouteAnnotations\NoCsrf;
+use OpenCore\Router\Body;
 use Psr\Http\Message\ServerRequestInterface;
 
 #[Controller('/hello')]

@@ -11,12 +11,11 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore\Controllers\UnusedHuge;
+namespace OpenCore\Router\Controllers\UnusedHuge;
 
-use OpenCore\Controller;
-use OpenCore\Route;
-use OpenCore\Body;
-use OpenCore\ControllerResponse;
+use OpenCore\Router\Controller;
+use OpenCore\Router\Route;
+use OpenCore\Router\Body;
 
 #[Controller('/crud3')]
 class Crud3 {

@@ -11,32 +11,31 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore;
+namespace OpenCore\Router;
 
 use PHPUnit\Framework\TestCase;
-use OpenCore\Exceptions\{
+use OpenCore\Router\Exceptions\{
   InconsistentParamsException,
   AmbiguousRouteException,
   NoControllersException,
   InvalidParamTypeException,
 };
 use Psr\Http\Message\ResponseInterface;
-use LogicException;
 
 final class RouterTest extends TestCase {
 
-  private static ?App $app = null;
-
-  protected function setUp(): void {
-    self::$app = App::create(['Valid', 'UnusedHuge']);
-  }
+  private static array $apps = [];
 
   public static function tearDownAfterClass(): void {
-    self::$app->clear();
+    foreach (self::$apps as $app) {
+      $app->clear();
+    }
   }
 
-  private function makeApp(array $scanNs): App {
-    return App::create($scanNs);
+  private function makeApp(array $scanNs = null): App {
+    $app = App::create($scanNs ?? ['Valid', 'UnusedHuge']);
+    self::$apps[] = $app;
+    return $app;
   }
 
   private static function toJson(ResponseInterface $response) {
@@ -45,39 +44,39 @@ final class RouterTest extends TestCase {
   }
 
   public function testNotFound() {
-    $response = self::$app->handleRequest('GET', '/not-found/');
+    $response = $this->makeApp()->handleRequest('GET', '/not-found/');
     $this->assertEquals(404, $response->getStatusCode());
   }
 
   public function testFalsyValidParam() {
-    $response = self::$app->handleRequest('GET', '/user/0');
+    $response = $this->makeApp()->handleRequest('GET', '/user/0');
     $this->assertEquals(404, $response->getStatusCode());
   }
 
   public function testFalsyValidBody() {
-    $response = self::$app->handleRequest('POST', '/user', payload: []);
+    $response = $this->makeApp()->handleRequest('POST', '/user', payload: []);
     $this->assertEquals(418, $response->getStatusCode());
   }
 
   public function testVoidControllerResponse() {
-    $response = self::$app->handleRequest('GET', '/hello/noop');
+    $response = $this->makeApp()->handleRequest('GET', '/hello/noop');
     $this->assertEquals(200, $response->getStatusCode());
   }
 
   public function testDynamicSegment() {
-    $response = self::$app->handleRequest('GET', '/hello/greet/World');
+    $response = $this->makeApp()->handleRequest('GET', '/hello/greet/World');
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertEquals('Hello, World!', (string) $response->getBody());
   }
 
   public function testStaticOverDynamicSegmentPriorityWithRandomParamOrder() {
-    $response = self::$app->handleRequest('GET', '/hello/greet/king');
+    $response = $this->makeApp()->handleRequest('GET', '/hello/greet/king');
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertEquals('Greetings to the King!', (string) $response->getBody());
   }
 
   public function testMethodNotSupported() {
-    $response = self::$app->handleRequest('POST', '/hello/greet/world');
+    $response = $this->makeApp()->handleRequest('POST', '/hello/greet/world');
     $this->assertEquals(405, $response->getStatusCode());
   }
 
@@ -107,94 +106,97 @@ final class RouterTest extends TestCase {
   }
 
   public function testResponseSerializing() {
-    $response = self::$app->handleRequest('GET', '/user');
+    $response = $this->makeApp()->handleRequest('GET', '/user');
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertCount(2, self::toJson($response));
   }
 
   public function testRequiredBodyError() {
-    $response = self::$app->handleRequest('POST', '/user');
+    $response = $this->makeApp()->handleRequest('POST', '/user');
     $this->assertEquals(400, $response->getStatusCode());
   }
 
   public function testStaticToDynamicBacktrace() {
-    $response = self::$app->handleRequest('GET', '/hello/welcome/great/king');
+    $app = $this->makeApp();
+    $response = $app->handleRequest('GET', '/hello/welcome/great/king');
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertEquals('Welcome, Great King!', (string) $response->getBody());
 
-    $response = self::$app->handleRequest('GET', '/hello/welcome/noble/knight');
+    $response = $app->handleRequest('GET', '/hello/welcome/noble/knight');
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertEquals('Welcome, noble knight!', (string) $response->getBody());
   }
 
   public function testShuffledParamOrder() {
-    $response = self::$app->handleRequest('POST', '/hello/specie/wolf/color/black');
+    $response = $this->makeApp()->handleRequest('POST', '/hello/specie/wolf/color/black');
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertEquals('POST Hello, black wolf!', (string) $response->getBody());
   }
 
   public function testSimplifiedRouterResponse() {
-    $response = self::$app->handleRequest('GET', '/user/1');
+    $app = $this->makeApp();
+    $response = $app->handleRequest('GET', '/user/1');
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertEquals('userA', self::toJson($response)['name']);
 
-    $response = self::$app->handleRequest('HEAD', '/user/1');
+    $response = $app->handleRequest('HEAD', '/user/1');
     $this->assertEquals(200, $response->getStatusCode());
 
-    $response = self::$app->handleRequest('GET', '/user/-1');
+    $response = $app->handleRequest('GET', '/user/-1');
     $this->assertEquals(404, $response->getStatusCode());
 
-    $response = self::$app->handleRequest('HEAD', '/user/-1');
+    $response = $app->handleRequest('HEAD', '/user/-1');
     $this->assertEquals(404, $response->getStatusCode());
 
-    $response = self::$app->handleRequest('GET', '/user/1/roles');
+    $response = $app->handleRequest('GET', '/user/1/roles');
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertEquals(['a', 'b', 'c'], self::toJson($response));
 
-    $response = self::$app->handleRequest('POST', '/user', payload: ['id' => 1]);
+    $response = $app->handleRequest('POST', '/user', payload: ['id' => 1]);
     $this->assertEquals(409, $response->getStatusCode());
 
-    $response = self::$app->handleRequest('POST', '/user', payload: ['id' => 3]);
+    $response = $app->handleRequest('POST', '/user', payload: ['id' => 3]);
     $this->assertEquals(201, $response->getStatusCode());
     $this->assertArrayHasKey('id', self::toJson($response));
 
-    $response = self::$app->handleRequest('DELETE', '/user/3');
+    $response = $app->handleRequest('DELETE', '/user/3');
     $this->assertEquals(204, $response->getStatusCode());
   }
 
   public function testQueryParam() {
-    $response = self::$app->handleRequest('GET', '/user', query: ['filterKey' => 'role', 'filterValue' => 'b']);
+    $app = $this->makeApp();
+    $response = $app->handleRequest('GET', '/user', query: ['filterKey' => 'role', 'filterValue' => 'b']);
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertCount(1, self::toJson($response));
 
-    $response = self::$app->handleRequest('GET', '/user', query: ['filterKey' => 'role', 'filterValue' => 'b', 'active' => 'true']);
+    $response = $app->handleRequest('GET', '/user', query: ['filterKey' => 'role', 'filterValue' => 'b', 'active' => 'true']);
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertIsArray(self::toJson($response));
     $this->assertCount(0, self::toJson($response));
 
-    $response = self::$app->handleRequest('GET', '/user', query: ['active' => 'false']);
+    $response = $app->handleRequest('GET', '/user', query: ['active' => 'false']);
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertCount(1, self::toJson($response));
 
-    $response = self::$app->handleRequest('GET', '/user', query: ['active' => 'true']);
+    $response = $app->handleRequest('GET', '/user', query: ['active' => 'true']);
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertCount(1, self::toJson($response));
 
-    $response = self::$app->handleRequest('GET', '/user', query: ['active' => '0']);
+    $response = $app->handleRequest('GET', '/user', query: ['active' => '0']);
     $this->assertEquals(200, $response->getStatusCode());
 
-    $response = self::$app->handleRequest('GET', '/user', query: ['active' => '1']);
+    $response = $app->handleRequest('GET', '/user', query: ['active' => '1']);
     $this->assertEquals(200, $response->getStatusCode());
 
-    $response = self::$app->handleRequest('GET', '/user', query: ['active' => 'no']);
+    $response = $app->handleRequest('GET', '/user', query: ['active' => 'no']);
     $this->assertEquals(400, $response->getStatusCode());
 
-    $response = self::$app->handleRequest('GET', '/user', query: ['active' => 'yes']);
+    $response = $app->handleRequest('GET', '/user', query: ['active' => 'yes']);
     $this->assertEquals(400, $response->getStatusCode());
   }
 
   public function testInvalidBody() {
-    $response = self::$app->handleRequest('POST', '/user', payloadStr: '{');
+    $response = $this->makeApp()->handleRequest('POST', '/user', payloadStr: '{');
     $this->assertEquals(400, $response->getStatusCode());
   }
 
@@ -209,7 +211,7 @@ final class RouterTest extends TestCase {
   }
 
   public function testRequestAttributes() {
-    $response = self::$app->handleRequest('POST', '/hello/validate-long-message', payload: [], routerOnly: true);
+    $response = $this->makeApp()->handleRequest('POST', '/hello/validate-long-message', payload: [], routerOnly: true);
     $this->assertEquals(200, $response->getStatusCode());
     $attrs = self::toJson($response);
     $this->assertIsArray($attrs);
@@ -222,46 +224,47 @@ final class RouterTest extends TestCase {
 
   public function testRawRequestResponse() {
     $msg = 'This is message!';
-    $response = self::$app->handleRequest('POST', '/raw/echo/str', payloadStr: $msg);
+    $response = $this->makeApp()->handleRequest('POST', '/raw/echo/str', payloadStr: $msg);
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertEquals($msg, (string) $response->getBody());
   }
 
   public function testControllerStreamResult() {
     $msg = 'This is message!';
-    $response = self::$app->handleRequest('POST', '/raw/echo/stream', payloadStr: $msg);
+    $response = $this->makeApp()->handleRequest('POST', '/raw/echo/stream', payloadStr: $msg);
     $this->assertEquals(200, $response->getStatusCode());
     $this->assertEquals($msg, (string) $response->getBody());
   }
 
   public function testReverseRouteStaticRoute() {
-    $url = self::$app->getRouter()->reverse('addUser', ['hello' => 'world']);
+    $url = $this->makeApp()->getRouter()->reverse('addUser', ['hello' => 'world']);
     $this->assertEquals('/user', (string) $url);
   }
 
   public function testReverseRouteSegmentParams() {
     $id = 999;
-    $url = self::$app->getRouter()->reverse('getUserRoles', ['id' => $id]);
+    $url = $this->makeApp()->getRouter()->reverse('getUserRoles', ['id' => $id]);
     $this->assertEquals("/user/$id/roles", (string) $url);
   }
 
   public function testReverseRouteQueryParams() {
     $filterKey = 'some-key';
     $filterValue = 'some-value';
-
-    $url = self::$app->getRouter()->reverse('getUsers', ['filterKey' => $filterKey, 'filterValue' => $filterValue, 'active' => true]);
+    $app = $this->makeApp();
+    $url = $app->getRouter()->reverse('getUsers', ['filterKey' => $filterKey, 'filterValue' => $filterValue, 'active' => true]);
     $this->assertEquals("/user?filterKey=$filterKey&filterValue=$filterValue&active=true", (string) $url);
 
-    $url = self::$app->getRouter()->reverse('getUsers', ['filterKey' => $filterKey, 'filterValue' => $filterValue, 'active' => false]);
+    $url = $app->getRouter()->reverse('getUsers', ['filterKey' => $filterKey, 'filterValue' => $filterValue, 'active' => false]);
     $this->assertEquals("/user?filterKey=$filterKey&filterValue=$filterValue&active=false", (string) $url);
   }
 
   public function testReverseRouteBodyParam() {
+    $app = $this->makeApp();
     $id = 999;
-    $url = self::$app->getRouter()->reverse('userEditUser', ['id' => $id]);
+    $url = $app->getRouter()->reverse('userEditUser', ['id' => $id]);
     $this->assertEquals("/user/$id", (string) $url);
 
-    $url = self::$app->getRouter()->reverse('userEditUser', ['id' => $id, 'body' => []]);
+    $url = $app->getRouter()->reverse('userEditUser', ['id' => $id, 'body' => []]);
     $this->assertEquals("/user/$id", (string) $url);
   }
 
@@ -269,26 +272,28 @@ final class RouterTest extends TestCase {
     $id = 123;
     $fullInfo = true;
     $attrFilter = 'some-filter';
-
-    self::$app->handleRequest('GET', "/user/$id", query: ['fullInfo' => (string) $fullInfo, 'attrFilter' => $attrFilter]);
+    $app = $this->makeApp();
+    $app->handleRequest('GET', "/user/$id", query: ['fullInfo' => (string) $fullInfo, 'attrFilter' => $attrFilter]);
     // $req param must be ignored, order of params must be normalized
-    $expected = self::$app->getRouter()->createLocation('getUser', ['req' => null, 'fullInfo' => $fullInfo, 'id' => $id, 'attrFilter' => $attrFilter]);
-    $actual = self::$app->getRouter()->currentLocation();
+    $expected = $app->getRouter()->createLocation('getUser', ['req' => null, 'fullInfo' => $fullInfo, 'id' => $id, 'attrFilter' => $attrFilter]);
+    $actual = $app->getRouter()->currentLocation();
 
     $this->assertEquals((string) $expected, (string) $actual);
   }
 
   public function testResolvingCurrentLocation() {
-    self::$app->handleRequest('GET', '/user');
+    $app = $this->makeApp();
+    $app->handleRequest('GET', '/user');
     // $req param must be ignored, order of params must be normalized
-    $actual = self::$app->getRouter()->reverseLocation(self::$app->getRouter()->currentLocation());
+    $actual = $app->getRouter()->reverseLocation($app->getRouter()->currentLocation());
 
     $this->assertEquals('/user', (string) $actual);
   }
 
   public function testResolvingUnnamedLocation() {
-    self::$app->handleRequest('GET', '/hello/noop');
-    $actual = self::$app->getRouter()->currentLocation();
+    $app = $this->makeApp();
+    $app->handleRequest('GET', '/hello/noop');
+    $actual = $app->getRouter()->currentLocation();
     $this->assertNull($actual);
   }
 

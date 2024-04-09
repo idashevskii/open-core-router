@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 /**
  * @license   MIT
@@ -11,16 +9,15 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore;
+namespace OpenCore\Router;
 
 use ReflectionClass;
 use ReflectionAttribute;
 use ReflectionMethod;
-use ReflectionParameter;
-use OpenCore\Exceptions\NoControllersException;
-use OpenCore\Exceptions\InvalidParamTypeException;
-use OpenCore\Exceptions\InconsistentParamsException;
-use OpenCore\Exceptions\AmbiguousRouteException;
+use OpenCore\Router\Exceptions\NoControllersException;
+use OpenCore\Router\Exceptions\InvalidParamTypeException;
+use OpenCore\Router\Exceptions\InconsistentParamsException;
+use OpenCore\Router\Exceptions\AmbiguousRouteException;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -30,7 +27,7 @@ final class RouterCompiler {
   private const SEGMENT_DYNAMIC = 2;
 
   public function __construct() {
-    
+
   }
 
   // node: [staticSegments:{[value]:node}, dynamicSegmetns:[{param, node}], handlers:{[method]:{ctrl, fn, params}}]
@@ -52,15 +49,16 @@ final class RouterCompiler {
       if (!$node) {
         $node = [null, null, null];
       }
-      list(&$staticLink, &$dynamicLink, &$methodHandlersLink) = $node;
+      [&$staticLink, &$dynamicLink, &$methodHandlersLink] = $node;
       if (!$segments) {
-        if (isset($methodHandlersLink[$httpMethod])) {
-          $this->throwAmbiguousRouteException($handlerIdx, $methodHandlersLink[$httpMethod]);
+        $methodHandlerLink =& $methodHandlersLink[$httpMethod];
+        if ($methodHandlerLink !== null) {
+          $this->throwAmbiguousRouteException($handlerIdx, $methodHandlerLink);
         }
-        $methodHandlersLink[$httpMethod] = $handlerIdx;
+        $methodHandlerLink = $handlerIdx;
         break;
       }
-      list($segmentType, $segmentArg) = array_shift($segments);
+      [$segmentType, $segmentArg] = array_shift($segments);
       if ($segmentType === self::SEGMENT_STATIC) {
         $childNode = &$staticLink[$segmentArg];
       } else { // self::SEGMENT_DYNAMIC
@@ -74,7 +72,7 @@ final class RouterCompiler {
     $ret = [];
 
     $expectedDynamicSegments = [];
-    foreach ($segmets as list($segmentType, $segmentArg)) {
+    foreach ($segmets as [$segmentType, $segmentArg]) {
       if ($segmentType === self::SEGMENT_DYNAMIC) {
         $expectedDynamicSegments[] = $segmentArg;
       }
@@ -107,7 +105,7 @@ final class RouterCompiler {
       $paramName = $rParam->name;
       if ($supportedParamTypes && !in_array($paramType, $supportedParamTypes)) {
         throw new InvalidParamTypeException(
-                "Type '$paramType' of param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' is not supported");
+          "Type '$paramType' of param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' is not supported");
       }
       if ($paramKind === Router::KIND_SEGMENT) {
         $actualDynamicSegments[] = $paramName;
@@ -126,9 +124,9 @@ final class RouterCompiler {
     sort($actualDynamicSegments);
     if ($expectedDynamicSegments !== $actualDynamicSegments) {
       throw new InconsistentParamsException(
-              "Inconsistent route '$uri' and method '" . $this->stringifyCallable($handler) . "' params."
-              . " Expected: (" . implode(', ', $expectedDynamicSegments) . ")."
-              . " Actual: (" . implode(', ', $actualDynamicSegments) . ")");
+        "Inconsistent route '$uri' and method '" . $this->stringifyCallable($handler) . "' params."
+        . " Expected: (" . implode(', ', $expectedDynamicSegments) . ")."
+        . " Actual: (" . implode(', ', $actualDynamicSegments) . ")");
     }
     return $ret;
   }
@@ -162,8 +160,8 @@ final class RouterCompiler {
 
   private function throwAmbiguousRouteException(int $handlerIdx1, int $handlerIdx2) {
     throw new AmbiguousRouteException("Ambiguous route for " . implode(' and ', [
-              $this->stringifyCallable($this->handlers[$handlerIdx1]),
-              $this->stringifyCallable($this->handlers[$handlerIdx2]),
+      $this->stringifyCallable($this->handlers[$handlerIdx1]),
+      $this->stringifyCallable($this->handlers[$handlerIdx2]),
     ]));
   }
 
@@ -186,7 +184,7 @@ final class RouterCompiler {
     if (!is_dir($dir)) {
       return;
     }
-    $scanDir = function (string $namespace, string $dir)use (&$scanDir) {
+    $scanDir = function (string $namespace, string $dir) use (&$scanDir) {
       foreach (scandir($dir, SCANDIR_SORT_NONE) as $file) {
         if ($file === '.' || $file === '..') {
           continue;

@@ -11,9 +11,9 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore\RouteAnnotations;
+namespace OpenCore\Router\RouteAnnotations;
 
-use OpenCore\RouteAnnotation;
+use OpenCore\Router\RouteAnnotation;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_METHOD)]

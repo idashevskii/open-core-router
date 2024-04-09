@@ -11,11 +11,11 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore\Controllers\InvalidBodyType;
+namespace OpenCore\Router\Controllers\InvalidBodyType;
 
-use OpenCore\Controller;
-use OpenCore\Route;
-use OpenCore\Body;
+use OpenCore\Router\Controller;
+use OpenCore\Router\Route;
+use OpenCore\Router\Body;
 
 #[Controller('')]
 class Ctrl {

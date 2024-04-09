@@ -11,19 +11,18 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore;
+namespace OpenCore\Router;
 
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use OpenCore\Exceptions\RoutingException;
+use OpenCore\Router\Exceptions\RoutingException;
 use Psr\Http\Message\UriInterface;
 use Psr\Http\Message\UriFactoryInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use InvalidArgumentException;
 use JsonException;
-use LogicException;
 
 final class Router implements MiddlewareInterface {
 
@@ -41,7 +40,7 @@ final class Router implements MiddlewareInterface {
   private ?array $currentRouteData = null;
 
   public function __construct(
-      RouterConfig $config,
+      private RouterConfig $config,
       private ResponseFactoryInterface $responseFactory,
       private UriFactoryInterface $uriFactoryInterface,
   ) {
@@ -102,11 +101,11 @@ final class Router implements MiddlewareInterface {
     $paramMap = [];
     foreach ($paramsProps as list($paramKind, $paramType, $paramName, $segmentIndex)) {
       $paramMap[$paramName] = match ($paramKind) {
-        self::KIND_SEGMENT => self::parseParam($paramType, $segmentParams[$segmentIndex], $paramName),
-        self::KIND_BODY => self::parseParam($paramType, (string) $request->getBody(), $paramName),
+        self::KIND_SEGMENT => $this->config->deserialize($paramType, $segmentParams[$segmentIndex]),
+        self::KIND_BODY => $this->config->deserialize($paramType, (string) $request->getBody()),
         self::KIND_REQUEST => $request,
         self::KIND_RESPONSE => $this->responseFactory->createResponse(),
-        self::KIND_QUERY => isset($queryParams[$paramName]) ? self::parseParam($paramType, $queryParams[$paramName], $paramName) : null,
+        self::KIND_QUERY => isset($queryParams[$paramName]) ? $this->config->deserialize($paramType, $queryParams[$paramName]) : null,
       };
     }
     if ($routeName) {
@@ -188,28 +187,6 @@ final class Router implements MiddlewareInterface {
       $ret = $ret->withQuery(http_build_query($query));
     }
     return $ret;
-  }
-
-  private static function parseParam(string $type, string $value, string $name) {
-    return match ($type) {
-      'string' => $value,
-      'int' => (int) $value,
-      'float' => (float) $value,
-      'bool' => match ($value) {
-        'true', '1' => true,
-        'false', '0' => false,
-        default => throw new RoutingException("Param '$name' has invalid boolean value", code: 400),
-      },
-      'array' => self::parseJson($value),
-    };
-  }
-
-  private static function parseJson(string $json) {
-    try {
-      return json_decode($json, flags: JSON_THROW_ON_ERROR | JSON_OBJECT_AS_ARRAY);
-    } catch (JsonException $ex) {
-      throw new RoutingException('Body parse error', code: 400, previous: $ex);
-    }
   }
 
 }

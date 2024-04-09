@@ -11,12 +11,12 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore\Controllers\Valid;
+namespace OpenCore\Router\Controllers\Valid;
 
-use OpenCore\Controller;
-use OpenCore\Route;
-use OpenCore\Body;
-use OpenCore\ControllerResponse;
+use OpenCore\Router\Controller;
+use OpenCore\Router\Route;
+use OpenCore\Router\Body;
+use OpenCore\Router\ControllerResponse;
 use Psr\Http\Message\ServerRequestInterface;
 
 #[Controller('user')]

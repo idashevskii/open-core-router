@@ -12,6 +12,7 @@ PSR-15 compliant fast Router Middleware based on precompiled searching tree.
   - Because of pre-compiled tree structure, the complexity of matching algorithm is O(log n) instead of O(n).
 - Almost no regex matches.
 - Reverse routing.
+- Fully configurable data deserialization.
 
 ## Lifecycle
 

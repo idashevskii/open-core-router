@@ -11,10 +11,10 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace OpenCore\Controllers\InconsistentParams;
+namespace OpenCore\Router\Controllers\InconsistentParams;
 
-use OpenCore\Controller;
-use OpenCore\Route;
+use OpenCore\Router\Controller;
+use OpenCore\Router\Route;
 
 #[Controller('/hello')]
 class Ctrl {
