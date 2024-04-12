@@ -21,7 +21,7 @@ use OpenCore\Router\Body;
 class Ctrl {
 
   #[Route('POST', '')]
-  public function send(#[Body] float $arr) {
+  public function send(#[Body] mixed $arr) {
     return null;
   }
 

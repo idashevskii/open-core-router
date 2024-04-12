@@ -14,6 +14,7 @@ namespace OpenCore\Router;
 use ReflectionClass;
 use ReflectionAttribute;
 use ReflectionMethod;
+use ReflectionNamedType;
 use OpenCore\Router\Exceptions\NoControllersException;
 use OpenCore\Router\Exceptions\InvalidParamTypeException;
 use OpenCore\Router\Exceptions\InconsistentParamsException;
@@ -81,29 +82,27 @@ final class RouterCompiler {
     $segnemtParamIndexMap = array_flip($expectedDynamicSegments);
 
     foreach ($rMethod->getParameters() as $rParam) {
-      /* @var $rParam ReflectionParameter */
-      $paramType = ltrim((string) $rParam->getType(), '?'); // strip optionality marker;
+      $rType = $rParam->getType();
+      if (!($rType instanceof ReflectionNamedType)) {
+        throw new InvalidParamTypeException(
+          "Param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' must be typed");
+      }
+      $paramType = $rType->getName();
       if ($rParam->getAttributes(Body::class, ReflectionAttribute::IS_INSTANCEOF)) {
         $paramKind = Router::KIND_BODY;
       } else if (is_a($paramType, ServerRequestInterface::class, true)) {
         $paramKind = Router::KIND_REQUEST;
-        $paramType = null;
+        $paramType = null; // no needs to store in cache
       } else if (is_a($paramType, ResponseInterface::class, true)) {
         $paramKind = Router::KIND_RESPONSE;
-        $paramType = null;
+        $paramType = null; // no needs to store in cache
       } else if ($rParam->isOptional()) {
         $paramKind = Router::KIND_QUERY;
       } else {
         $paramKind = Router::KIND_SEGMENT;
       }
-      $supportedParamTypes = match ($paramKind) {
-        Router::KIND_BODY => ['array', 'string'],
-        Router::KIND_QUERY => ['string', 'int', 'bool', 'float'],
-        Router::KIND_SEGMENT => ['string', 'int'],
-        default => null,
-      };
       $paramName = $rParam->name;
-      if ($supportedParamTypes && !in_array($paramType, $supportedParamTypes)) {
+      if (!self::validateParamType($paramKind, $rType)) {
         throw new InvalidParamTypeException(
           "Type '$paramType' of param '$paramName' for " . $this->stringifyCallable($handler) . " in route '$uri' is not supported");
       }
@@ -129,6 +128,15 @@ final class RouterCompiler {
         . " Actual: (" . implode(', ', $actualDynamicSegments) . ")");
     }
     return $ret;
+  }
+
+  private static function validateParamType(int $kind, ReflectionNamedType $rType): bool {
+    return match ($kind) {
+      Router::KIND_BODY => $rType->getName() !== 'mixed',
+      Router::KIND_QUERY => in_array($rType->getName(), ['string', 'int', 'bool', 'float']),
+      Router::KIND_SEGMENT => in_array($rType->getName(), ['string', 'int']),
+      default => true,
+    };
   }
 
   private function parseClass(string $class, int $classIndex) {
